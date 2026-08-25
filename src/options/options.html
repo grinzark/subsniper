@@ -25,8 +25,11 @@
     <div class="guard-banner">
       <b>How it works &amp; why it's safe:</b> SubSniper only reads reddit.com pages
       you're already viewing in your own logged-in session — no Reddit API, no
-      scraping, no server. It <b>never</b> posts, comments, upvotes, or acts on your
-      behalf. Drafts are copy-paste only.
+      scraping, and no SubSniper server. Scoring runs entirely on your device.
+      It <b>never</b> posts, comments, upvotes, or acts on your behalf — drafts are
+      copy-paste only. The one exception to "stays on your device" is the
+      optional AI draft below: if you add your own Anthropic key and click
+      <b>Generate with AI</b>, that post's text is sent to Anthropic.
     </div>
 
     <!-- PRODUCTS -->
@@ -63,10 +66,12 @@
     <!-- AI DRAFTS -->
     <section class="card">
       <div class="card-head">
-        <h2>AI drafts <span class="pro-badge">Pro</span></h2>
-        <p>Optional. Bring your own Anthropic API key. Requests go directly from your
+        <h2>AI drafts <span class="opt-badge">Optional</span></h2>
+        <p>Optional. Bring your own Anthropic API key. When you click "Generate with
+          AI", that post's text and your product details are sent directly from your
           browser to Anthropic — nowhere else. Leave blank to use the built-in local
-          templates (no network).</p>
+          templates (no network at all). Your key is stored only on this device and
+          is never synced.</p>
       </div>
       <div class="field">
         <label for="ai-key">Anthropic API key</label>
@@ -90,11 +95,11 @@
       <p class="field-hint" id="ai-perm-note"></p>
     </section>
 
-    <!-- LICENSE -->
+    <!-- PLAN -->
     <section class="card">
       <div class="card-head">
-        <h2>License</h2>
-        <p>Free: 1 product · 15 saved leads · template drafts. Pro: unlimited + AI drafts.</p>
+        <h2>Plan</h2>
+        <p>Where SubSniper stands today.</p>
       </div>
       <div id="license-box"></div>
     </section>
@@ -111,7 +116,7 @@
     </section>
 
     <footer class="foot">
-      SubSniper v<span id="ver"></span> · runs entirely on your device · never posts for you
+      SubSniper v<span id="ver"></span> · Local by default · never posts for you
     </footer>
   </div>
 

@@ -18,33 +18,21 @@
   async function render() {
     $('pp-mark').innerHTML = crosshairSvg(20);
 
-    const [settings, stats, status] = await Promise.all([
+    const [settings, stats] = await Promise.all([
       NS.Storage.getSettings(),
-      NS.Storage.getStats(),
-      NS.License.getStatus()
+      NS.Storage.getStats()
     ]);
 
     $('pp-enabled').checked = !!settings.enabled;
     $('pp-found').textContent = String(stats.found || 0);
     $('pp-saved').textContent = String(stats.saved || 0);
 
-    const planEl = $('pp-plan');
-    const upBtn = $('pp-upgrade');
-    if (status.pro) {
-      planEl.textContent = 'Pro plan';
-      planEl.classList.add('is-pro');
-      upBtn.textContent = '✓ Pro active';
-      upBtn.classList.add('is-pro');
-      upBtn.disabled = false;
-    } else {
-      planEl.textContent = 'Free plan';
-      upBtn.textContent = '✦ Upgrade to Pro';
-    }
+    // v0.1.0 ships free-only with everything unlocked — no plan/upgrade UI.
+    $('pp-plan').textContent = 'v' + NS.VERSION + ' · free';
 
     const products = (settings.products || []).length;
-    $('pp-limits').textContent = status.pro
-      ? 'Unlimited products & saved leads'
-      : products + '/' + NS.LIMITS.FREE_PRODUCTS + ' product · up to ' + NS.LIMITS.FREE_LEADS + ' saved leads';
+    $('pp-limits').textContent =
+      products + (products === 1 ? ' product' : ' products') + ' tracked · all features unlocked';
   }
 
   function wire() {
@@ -54,14 +42,6 @@
     $('pp-options').addEventListener('click', () => {
       if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
       else window.open(chrome.runtime.getURL('src/options/options.html'));
-    });
-    $('pp-upgrade').addEventListener('click', async () => {
-      const status = await NS.License.getStatus();
-      if (status.pro) {
-        if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
-        return;
-      }
-      NS.License.startCheckout();
     });
   }
 

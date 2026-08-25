@@ -25,15 +25,28 @@
   function scheduleSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
-      await NS.Storage.setSettings(S);
-      flashSaved();
+      const res = await NS.Storage.setSettings(S);
+      if (res && res.ok) flashSaved();
+      else flashSaveError(res && res.error);
     }, 400);
   }
   function flashSaved() {
     const el = $('#save-state');
     el.textContent = 'Saved ✓';
+    el.classList.remove('err');
     el.classList.add('show');
     setTimeout(() => el.classList.remove('show'), 1400);
+  }
+  /**
+   * A failed write must never look like a success. chrome.storage can reject a
+   * write (quota, serialization, unavailable context) and previously the UI
+   * still said "Saved ✓" while the data was discarded.
+   */
+  function flashSaveError(error) {
+    const el = $('#save-state');
+    el.textContent = 'Not saved — ' + (error || 'storage error');
+    el.classList.add('err', 'show');
+    // Leave the failure visible; it must not quietly disappear.
   }
 
   // ── Products ───────────────────────────────────────────────────────────────
@@ -42,15 +55,11 @@
     host.innerHTML = '';
     (S.products || []).forEach((p, i) => host.appendChild(productCard(p, i)));
 
-    const status = await NS.License.getStatus();
-    const canAdd = status.pro || (S.products || []).length < NS.LIMITS.FREE_PRODUCTS;
-    $('#add-product').disabled = !canAdd;
-    $('#product-limit').innerHTML = status.pro
-      ? 'Pro: unlimited products.'
-      : (S.products || []).length + ' of ' + NS.LIMITS.FREE_PRODUCTS +
-        ' products used on the Free plan. <a href="#" id="pl-upgrade">Upgrade for unlimited →</a>';
-    const up = $('#pl-upgrade');
-    if (up) up.addEventListener('click', (e) => { e.preventDefault(); NS.License.startCheckout(); });
+    // v0.1.0 ships free-only with no caps.
+    $('#add-product').disabled = false;
+    const n = (S.products || []).length;
+    $('#product-limit').textContent =
+      n + (n === 1 ? ' product tracked' : ' products tracked') + ' · unlimited in v' + NS.VERSION;
   }
 
   function productCard(p, i) {
@@ -103,11 +112,6 @@
   }
 
   $('#add-product').addEventListener('click', async () => {
-    const status = await NS.License.getStatus();
-    if (!status.pro && (S.products || []).length >= NS.LIMITS.FREE_PRODUCTS) {
-      NS.License.startCheckout();
-      return;
-    }
     S.products = S.products || [];
     S.products.push({ id: NS.uid('prod'), name: '', keywords: [], synonyms: [], pitch: '', url: '' });
     renderProducts(); scheduleSave();
@@ -151,7 +155,7 @@
   });
 
   // ── AI drafts ──────────────────────────────────────────────────────────────
-  function renderAi() {
+  async function renderAi() {
     const sel = $('#ai-model');
     sel.innerHTML = '';
     NS.MODELS.forEach((m) => {
@@ -160,20 +164,27 @@
       if (m.id === S.model) o.selected = true;
       sel.appendChild(o);
     });
-    $('#ai-key').value = S.anthropicKey || '';
+    // The key is NOT part of settings — it lives alone in chrome.storage.local
+    // so it is never synced to Google's servers and never reaches a content
+    // script. We show a masked placeholder rather than the value itself.
+    const hasKey = await NS.Storage.hasApiKey();
+    const keyEl = $('#ai-key');
+    keyEl.value = '';
+    keyEl.placeholder = hasKey ? '•••••••••• (saved on this device)' : 'sk-ant-...';
     $('#ai-tone').value = S.draftTone || 'helpful';
     refreshPermNote();
   }
 
-  $('#ai-key').addEventListener('input', (e) => {
-    S.anthropicKey = e.target.value.trim();
-    scheduleSave();
-    // When a key is present, request the optional host permission so AI drafts
-    // can actually run. Must be from a user gesture — input counts on save click,
-    // but to be safe we request on blur too.
-  });
-  $('#ai-key').addEventListener('blur', async () => {
-    if (S.anthropicKey) await ensureAnthropicPermission();
+  // Saved on blur (not per keystroke) so we write the key once, to local only.
+  $('#ai-key').addEventListener('blur', async (e) => {
+    const val = e.target.value.trim();
+    if (!val) { refreshPermNote(); return; }
+    const res = await NS.Storage.setApiKey(val);
+    if (!res.ok) { flashSaveError(res.error); return; }
+    e.target.value = '';
+    e.target.placeholder = '•••••••••• (saved on this device)';
+    flashSaved();
+    await ensureAnthropicPermission();
     refreshPermNote();
   });
   $('#ai-model').addEventListener('change', (e) => { S.model = e.target.value; scheduleSave(); });
@@ -192,9 +203,10 @@
       } catch (_e) { resolve(false); }
     });
   }
-  function refreshPermNote() {
+  async function refreshPermNote() {
     const note = $('#ai-perm-note');
-    if (!S.anthropicKey) {
+    const hasKey = await NS.Storage.hasApiKey();
+    if (!hasKey) {
       note.textContent = 'No key set → drafts use built-in local templates (fully offline).';
       return;
     }
@@ -211,61 +223,28 @@
     } catch (_e) { /* ignore */ }
   }
 
-  // ── License ────────────────────────────────────────────────────────────────
+  // ── Plan ───────────────────────────────────────────────────────────────────
+  /**
+   * v0.1.0 ships free-only. There is no key to enter and nothing to buy, so
+   * this section states that plainly instead of showing a paywall that could
+   * be bypassed by reading the bundle.
+   */
   async function renderLicense() {
     const box = $('#license-box');
     box.innerHTML = '';
-    const status = await NS.License.getStatus();
 
-    const statusRow = document.createElement('div');
-    statusRow.className = 'license-status';
-    statusRow.innerHTML =
-      '<span class="license-dot ' + (status.pro ? 'on' : '') + '"></span>' +
-      '<span class="license-text">' + (status.pro ? 'Pro is active' : 'Free plan') + '</span>';
-    box.appendChild(statusRow);
+    const note = document.createElement('p');
+    note.className = 'plan-note';
+    note.innerHTML =
+      '<b>Free — all features unlocked.</b><br>' +
+      'v' + NS.VERSION + ' is an early-access build: unlimited products, ' +
+      'unlimited saved leads, template drafts, and optional AI drafts with ' +
+      'your own Anthropic key. There is no paid tier and nothing to activate.';
+    box.appendChild(note);
 
-    // Plan pill in masthead.
     const pill = $('#plan-pill');
-    pill.textContent = status.pro ? 'Pro' : 'Free';
-    pill.classList.toggle('is-pro', status.pro);
-
-    if (status.pro) {
-      const deact = document.createElement('button');
-      deact.className = 'btn btn-ghost'; deact.textContent = 'Deactivate Pro on this device';
-      deact.addEventListener('click', async () => {
-        await NS.License.deactivate();
-        renderLicense(); renderProducts();
-      });
-      box.appendChild(deact);
-      return;
-    }
-
-    const row = document.createElement('div');
-    row.className = 'license-row';
-    const keyInput = document.createElement('input');
-    keyInput.type = 'text'; keyInput.placeholder = 'SUBSNIPER-PRO-XXXX-XXXX-XX';
-    const activate = document.createElement('button');
-    activate.className = 'btn btn-primary'; activate.textContent = 'Activate';
-    const buy = document.createElement('button');
-    buy.className = 'btn btn-upgrade'; buy.textContent = '✦ Get Pro';
-    row.appendChild(keyInput); row.appendChild(activate); row.appendChild(buy);
-    box.appendChild(row);
-
-    const msg = document.createElement('p');
-    msg.className = 'license-msg';
-    box.appendChild(msg);
-
-    activate.addEventListener('click', async () => {
-      const res = await NS.License.activate(keyInput.value);
-      if (res.ok) {
-        msg.textContent = 'Pro activated. Enjoy!'; msg.className = 'license-msg ok';
-        S = await NS.Storage.getSettings();
-        renderLicense(); renderProducts(); renderAi();
-      } else {
-        msg.textContent = res.error || 'Activation failed.'; msg.className = 'license-msg err';
-      }
-    });
-    buy.addEventListener('click', () => NS.License.startCheckout());
+    pill.textContent = 'Free';
+    pill.classList.remove('is-pro');
   }
 
   // ── Display ────────────────────────────────────────────────────────────────
@@ -287,7 +266,7 @@
     S = await NS.Storage.getSettings();
     await renderProducts();
     renderLexicon();
-    renderAi();
+    await renderAi();
     await renderLicense();
     renderDisplay();
   }

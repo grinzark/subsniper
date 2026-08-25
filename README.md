@@ -2,17 +2,20 @@
 
 Score buying-intent on the Reddit threads you're **already reading**, save the hot
 leads, and draft a reply you **copy and paste yourself**. SubSniper is an
-in-thread lead-generation tool for founders and marketers. It runs **100%
-client-side** on your own logged-in reddit.com session.
+in-thread lead-generation tool for founders and marketers. Scoring runs
+**locally by default** on your own logged-in reddit.com session — the only thing
+that ever leaves your browser is an optional AI draft you explicitly request,
+sent with your own Anthropic key.
 
 ---
 
 ## The two guardrails (why this exists and why it's viable)
 
-1. **Client-side only.** SubSniper makes **no Reddit API calls, no scraping
-   backend, and talks to no server.** It only reads the DOM of reddit.com pages
-   you are already viewing in your logged-in browser. This deliberately stays
-   clear of Reddit's 2025 commercial-API-use restrictions — there is no API use.
+1. **Client-side scoring, no SubSniper server.** SubSniper makes **no Reddit API
+   calls and runs no backend of its own.** It only reads the DOM of reddit.com
+   pages you are already viewing in your logged-in browser, and all lead scoring
+   happens on your device. This deliberately stays clear of Reddit's 2025
+   commercial-API-use restrictions — there is no API use.
 
 2. **Zero auto-posting, ever.** SubSniper **never** submits, posts, comments,
    upvotes, or interacts with Reddit on your behalf. The reply composer produces
@@ -20,9 +23,12 @@ client-side** on your own logged-in reddit.com session.
    button. You read it, make it sound like you, and post it manually. There is
    no code path anywhere in this extension that writes to Reddit.
 
-The only network request the extension can *ever* make is the **optional** AI
-draft: a direct call from your browser to **your own** Anthropic API key. Turn
-it off (leave the key blank) and SubSniper is fully offline.
+**The one exception to "nothing leaves your browser"** is the **optional** AI
+draft. If you add your own Anthropic API key and click *Generate with AI*, that
+post's text and your product details are sent directly from your browser to
+`api.anthropic.com` — nowhere else, authenticated with your key. Leave the key
+blank and SubSniper is fully offline. Your key is stored only on your device
+(never in Chrome sync) and is never loaded into the script that runs on Reddit.
 
 ---
 
@@ -40,10 +46,21 @@ it off (leave the key blank) and SubSniper is fully offline.
   concise / founder-to-founder) that mirror the person's pain, give one helpful
   line, and end with a soft, honest mention. Optional AI drafts with your key.
 
-## Free vs Pro
+## Pricing — v0.1.0 is free, everything unlocked
 
-| | Free | Pro |
-|---|---|---|
+There is **no paid tier and no paywall** in this build: unlimited products,
+unlimited saved leads, template drafts, and optional AI drafts (with your own
+key) are all available.
+
+This is deliberate. An earlier draft gated "Pro" behind a check that ran
+entirely in the browser — and shipped the key generator inside the bundle — so
+anyone reading the source could unlock it in seconds, while every "Upgrade"
+button pointed at a product that didn't exist yet. Rather than ship a paywall
+that is both bypassable and unbuyable, the gate is simply off. See
+`src/common/license.js` for how to re-introduce real, **server-verified**
+gating once billing exists.
+
+---|---|---|
 | Tracked products | 1 | Unlimited |
 | Saved leads | 15 | Unlimited |
 | Template drafts | ✓ | ✓ |
@@ -82,22 +99,49 @@ node --test src/common/intent-engine.test.mjs
 1. **Register** a Chrome Web Store developer account at
    <https://chrome.google.com/webstore/devconsole> — this is a **one-time $5
    fee** paid to Google (you do this yourself; it needs your payment method).
-2. **Zip the folder.** From inside `SubSniper/`:
+2. 🚩 **HOST `PRIVACY.md` AT A PUBLIC URL — YOU MUST DO THIS FIRST.**
+   **Chrome will not let you complete the Privacy practices tab without a
+   working privacy-policy URL, so the submission is blocked until this exists.**
+   A file sitting in this repo is *not* enough — it needs to be a real, publicly
+   reachable web page. Free options, pick one:
+   - **GitHub Pages** (easiest): push this repo to GitHub → **Settings → Pages**
+     → Source: `main`, folder `/ (root)` → Save. After ~1 minute your policy is
+     live at `https://<your-username>.github.io/<repo>/PRIVACY` (GitHub renders
+     `PRIVACY.md` automatically).
+   - Or paste the contents into a GitHub **Gist**, Notion public page, or any
+     page on your own domain.
+
+   Then copy that URL — you paste it into the dashboard in step 6. The required
+   Limited Use sentence is already in `PRIVACY.md`; don't delete it.
+3. **Zip the folder** — use the pre-built package at the repo root
+   (`SubSniper-v0.1.0.zip`), or rebuild the minimal runtime set:
    ```bash
-   zip -r ../subsniper.zip . -x ".*" -x "__MACOSX"
+   zip -r SubSniper-v0.1.0.zip manifest.json src assets \
+     -x "src/common/intent-engine.test.mjs" "assets/generate-icon.py" \
+        "assets/icon.png" "assets/icon1024.png" "*.DS_Store"
    ```
-   (Ship `manifest.json`, `src/`, and `assets/`. The tests and this README are
-   harmless to include but can be excluded.)
-3. In the dev console, click **New item** and upload `subsniper.zip`.
-4. Fill in the **listing**: name, summary, description, at least one 1280×800
+   (Ship only `manifest.json`, `src/`, and `assets/` icons — not the tests,
+   the icon generator, or the docs.)
+4. In the dev console, click **New item** and upload the zip.
+5. Fill in the **listing**: name, summary, description, at least one 1280×800
    screenshot, the 128×128 icon (`assets/icon128.png`), and category
    (Productivity / Social).
-5. Complete **Privacy practices**: declare that all processing is local, no
-   remote data collection, and paste/link `PRIVACY.md`. Declare the single
-   remote host (`api.anthropic.com`) as *optional, user-initiated, uses the
-   user's own key*. Justify the `storage` and `activeTab` permissions and the
-   `*.reddit.com` host permission (reads page content to score leads).
-6. Submit for review. Approval typically takes a few days.
+6. Complete **Privacy practices** — **be precise here; an inaccurate disclosure
+   is grounds for removal:**
+   - Paste the **privacy-policy URL from step 2**.
+   - Declare that lead scoring runs locally on the user's device and that
+     SubSniper operates no server of its own — but **do not claim "no remote
+     data collection" or "all processing is local" without qualification.**
+     That would be false: if the user opts in to AI drafts, the text of the
+     selected Reddit post is sent to `api.anthropic.com`. Disclose that host as
+     *optional, user-initiated, authenticated with the user's own API key*, and
+     tick the corresponding data-use boxes honestly.
+   - Justify the **`storage`** permission (saving settings and leads locally)
+     and the **`*.reddit.com`** host permission (reads page content to score
+     leads; read-only, never writes).
+   - The extension does **not** post, comment, or vote on the user's behalf —
+     that claim is true and worth stating.
+7. Submit for review. Approval typically takes a few days.
 
 > **Go-to-market reality check.** Chrome Web Store search is **not** your
 > distribution channel — nobody searches "reddit lead extension". Your
@@ -107,41 +151,22 @@ node --test src/common/intent-engine.test.mjs
 
 ---
 
-## Wire up the Pro subscription
+## Adding a paid tier later (not in v0.1.0)
 
-The license check ships as an **honest local stub** (`src/common/license.js`)
-so the extension is fully functional and reviewable offline. Swap it for real
-verification when you're ready:
+`src/common/license.js` documents both routes and the one rule that matters:
+**a license check is only meaningful if it is verified server-side.** Never ship
+a check the client can satisfy on its own — that is exactly what was removed.
 
-### Option A — ExtensionPay (easiest for extensions)
+- **ExtensionPay** (<https://extensionpay.com>) — handles Stripe, trials, and
+  the paywall UI. Register the extension id, call `extpay.startBackground()` in
+  the service worker, and gate on the server-provided `user.paid`.
+- **Gumroad license keys** (<https://gumroad.com>) — verify from the background
+  worker via `POST https://api.gumroad.com/v2/licenses/verify`, granting access
+  only when `success && !purchase.refunded && !purchase.subscription_ended_at`.
+  Requires adding `https://api.gumroad.com/*` to host permissions.
 
-<https://extensionpay.com> — handles Stripe, trials, and the paywall UI.
-
-1. Create an account and register the extension id `subsniper`.
-2. Add `extpay.js`, and in `src/background/service-worker.js`:
-   ```js
-   const extpay = ExtPay('subsniper');
-   extpay.startBackground();
-   ```
-3. In `license.js`, replace `getStatus()` / `isPro()` with
-   `const user = await extpay.getUser()` and gate on `user.paid`.
-4. Replace `startCheckout()` with `extpay.openPaymentPage()`.
-
-### Option B — Gumroad license keys
-
-<https://gumroad.com> — sell a membership, enable "Generate license keys".
-
-1. Point `CHECKOUT_URL` in `license.js` at your Gumroad product URL.
-2. In the background worker, verify a key server-lessly:
-   ```
-   POST https://api.gumroad.com/v2/licenses/verify
-        { product_id, license_key, increment_uses_count: false }
-   ```
-   Gate on `success && !purchase.refunded && purchase.subscription_ended_at == null`.
-
-Both spots are marked with `WIRE-UP:` comments in `src/common/license.js`.
-
----
+Whichever you choose, re-introduce the UI (upgrade CTAs, plan pill) at the same
+time — not before, so users never see a button that leads nowhere.
 
 ## Project layout
 
@@ -155,24 +180,29 @@ SubSniper/
 └── src/
     ├── common/                   Shared logic (global namespace, no ES imports)
     │   ├── constants.js          Namespace bootstrap, defaults, thresholds
-    │   ├── storage.js            chrome.storage wrapper (sync + local)
+    │   ├── storage.js            chrome.storage wrapper (sync/local split, honest errors)
     │   ├── intent-engine.js      The scorer (pure, explainable, testable)
     │   ├── intent-engine.test.mjs  node --test unit tests
     │   ├── dom-reddit.js         New + old Reddit DOM adapters
     │   ├── draft.js              Template + AI-request composer (never posts)
-    │   └── license.js            Free/Pro gating (local stub → ExtensionPay/Gumroad)
+    │   └── license.js            Plan state (v0.1.0 = all unlocked) + gating notes
     ├── content/
     │   ├── content.js            Orchestrator (scan → score → badge → sidebar)
     │   ├── sidebar.js            Panel + lead cards + composer modal
     │   ├── sidebar.css · badges.css
     ├── background/
-    │   └── service-worker.js     Checkout tabs + optional Anthropic fetch
+    │   └── service-worker.js     Optional Anthropic fetch (holds the API key)
     ├── popup/                    Stats + master on/off toggle
     └── options/                  Products, lexicon tuner, AI key, license
 ```
 
 ## Privacy
 
-See [PRIVACY.md](./PRIVACY.md). Short version: everything runs on your device.
-The only data that can leave your browser is an optional AI draft request that
-**you** trigger, sent directly to Anthropic using **your own** API key.
+See [PRIVACY.md](./PRIVACY.md). Short version: lead scoring runs on your device
+and SubSniper operates no server of its own. The only data that can leave your
+browser is an optional AI draft request that **you** trigger, sent directly to
+Anthropic using **your own** API key.
+
+**Publishing?** `PRIVACY.md` must be hosted at a public URL before the Chrome
+Web Store will let you complete the Privacy practices tab — see step 2 of
+[Publish it to the Chrome Web Store](#publish-it-to-the-chrome-web-store).

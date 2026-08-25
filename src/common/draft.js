@@ -131,9 +131,14 @@ globalThis.SubSniper = globalThis.SubSniper || {};
    * Build the Anthropic Messages API request object for AI drafting.
    * DOES NOT execute — the background worker runs it (see service-worker.js).
    *
+   * SECURITY: this deliberately does NOT include the API key. The key lives in
+   * chrome.storage.local and is injected by the background worker after its
+   * origin check, so the key never enters a content script running on
+   * reddit.com and is never passed across extension messaging.
+   *
    * @param {Object} lead
    * @param {Object} product
-   * @param {Object} settings  { anthropicKey, model, draftTone }
+   * @param {Object} settings  { model, draftTone }  (no key — by design)
    * @returns {{url:string, headers:Object, body:Object}}
    */
   function buildAiRequest(lead, product, settings) {
@@ -168,7 +173,7 @@ globalThis.SubSniper = globalThis.SubSniper || {};
       url: NS.ANTHROPIC_API_URL,
       headers: {
         'content-type': 'application/json',
-        'x-api-key': settings.anthropicKey || '',
+        // NOTE: no 'x-api-key' here — the background worker adds it.
         'anthropic-version': NS.ANTHROPIC_VERSION,
         // Required for calling the Anthropic API directly from a browser
         // extension (opts in to browser-origin requests / CORS).

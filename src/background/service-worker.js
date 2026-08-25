@@ -13,8 +13,8 @@
  * ------------------------------------------------------------------
  */
 
+// v0.1.0 ships free-only: there is no checkout flow (see license.js).
 const MSG = {
-  OPEN_CHECKOUT: 'subsniper:open-checkout',
   AI_DRAFT: 'subsniper:ai-draft',
   PING: 'subsniper:ping'
 };
@@ -36,14 +36,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return; // sync
   }
 
-  if (msg.type === MSG.OPEN_CHECKOUT) {
-    const url = typeof msg.url === 'string' && /^https:\/\//.test(msg.url)
-      ? msg.url : null;
-    if (url) chrome.tabs.create({ url });
-    sendResponse({ ok: !!url });
-    return; // sync
-  }
-
   if (msg.type === MSG.AI_DRAFT) {
     handleAiDraft(msg.request).then(sendResponse);
     return true; // async — keep the message channel open
@@ -53,6 +45,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 /**
  * Execute the Anthropic Messages API request built by draft.js.
  * Returns { ok, text } or { ok:false, error }.
+ *
+ * SECURITY MODEL:
+ *   1. Verify the URL is Anthropic BEFORE touching the key. The key is only
+ *      ever read once we know where it would be sent.
+ *   2. Read the key from chrome.storage.local HERE — never trust a key handed
+ *      in by the caller. The content script neither holds nor forwards it, so
+ *      a compromised page context cannot exfiltrate it via this channel.
+ *   3. Strip any caller-supplied auth headers before injecting the real one.
  */
 async function handleAiDraft(request) {
   if (!request || !request.url || !request.body) {
@@ -62,7 +62,9 @@ async function handleAiDraft(request) {
     // Hard guard: this worker only ever talks to Anthropic.
     return { ok: false, error: 'Refusing to call a non-Anthropic URL.' };
   }
-  const key = request.headers && request.headers['x-api-key'];
+
+  // Origin is verified — now (and only now) read the key from local storage.
+  const key = await getApiKey();
   if (!key) {
     return { ok: false, error: 'No Anthropic API key set. Add one in Options.' };
   }
@@ -76,10 +78,17 @@ async function handleAiDraft(request) {
     };
   }
 
+  // Build headers ourselves; never echo a caller-supplied credential.
+  const headers = Object.assign({}, request.headers || {});
+  delete headers['x-api-key'];
+  delete headers['authorization'];
+  headers['content-type'] = 'application/json';
+  headers['x-api-key'] = key;
+
   try {
     const resp = await fetch(request.url, {
       method: 'POST',
-      headers: request.headers,
+      headers: headers,
       body: JSON.stringify(request.body)
     });
     const data = await resp.json().catch(() => null);
@@ -103,6 +112,21 @@ function extractText(data) {
     .map((b) => b.text)
     .join('\n')
     .trim();
+}
+
+/** Read the Anthropic key from local storage. Background worker only. */
+function getApiKey() {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.local.get('subsniper_api_key', (res) => {
+        void chrome.runtime.lastError;
+        const k = res && res.subsniper_api_key;
+        resolve(typeof k === 'string' ? k.trim() : '');
+      });
+    } catch (_e) {
+      resolve('');
+    }
+  });
 }
 
 function hasAnthropicPermission() {

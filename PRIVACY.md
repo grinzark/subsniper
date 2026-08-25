@@ -17,11 +17,19 @@ never uploaded anywhere.
 
 All storage is Chrome's own extension storage on your device:
 
-- **Settings** (your products, keywords, synonyms, pitch, URL, intent-signal
-  weights, display preferences, license state, and — if you choose to enter one
-  — your Anthropic API key and chosen model) are stored in
-  `chrome.storage.sync`. If you're signed into Chrome, Chrome may sync these
-  across your own devices; they are not sent to us or to any third party.
+- **Roaming preferences** (the on/off toggle, your chosen model, draft tone, and
+  badge threshold) are stored in `chrome.storage.sync`. If you're signed into
+  Chrome, Chrome may sync these across your own devices; they are not sent to us
+  or to any third party.
+- **Your products and tuned intent weights** (product names, keywords,
+  synonyms, pitch, URL, and signal weights) are stored in
+  `chrome.storage.local` — on this machine only, never synced.
+- **Your Anthropic API key**, if you choose to enter one, is stored in
+  `chrome.storage.local` **only**. It is deliberately kept out of Chrome sync,
+  so it is never replicated to Google's servers. It is also never loaded into
+  the script that runs on reddit.com — only the extension's background worker
+  reads it, and only to authenticate the AI-draft request you explicitly
+  trigger.
 - **Saved leads** (the score, matched reasons, snippet, author, subreddit, and
   permalink of leads you explicitly save) and **daily counters** are stored in
   `chrome.storage.local` on this machine only.
@@ -59,11 +67,21 @@ never enter a key, this never happens.
 ## Permissions and why they're needed
 
 - **`storage`** — to save your settings and leads locally (as above).
-- **`activeTab`** — to operate on the Reddit tab you're actively using.
 - **Host access to `*.reddit.com`** — so the content script can read the page
   content it scores. Read-only; no writes.
 - **Optional host access to `api.anthropic.com`** — requested only if you enable
   AI drafts, used only for the request described above.
+
+## Chrome Web Store Limited Use disclosure
+
+SubSniper's use and transfer of information received from Chrome APIs adheres to
+the Chrome Web Store User Data Policy, including the Limited Use requirements.
+
+Concretely, that means: the information SubSniper reads is used only to provide
+the user-facing lead-scoring and drafting features described above; it is not
+sold, not transferred to third parties (except the optional, user-initiated AI
+draft sent to Anthropic with the user's own key), not used for advertising or
+creditworthiness, and not read by any human.
 
 ## Contact
 

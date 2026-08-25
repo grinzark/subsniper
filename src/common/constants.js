@@ -16,8 +16,18 @@ globalThis.SubSniper = globalThis.SubSniper || {};
 (function (NS) {
   'use strict';
 
-  /** Semantic version, mirrored in manifest.json. */
-  NS.VERSION = '1.0.0';
+  /**
+   * Version — read from the manifest so it can never drift out of sync.
+   * Falls back to '0.0.0' outside an extension context (e.g. unit tests).
+   */
+  NS.VERSION = (function () {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
+        return chrome.runtime.getManifest().version;
+      }
+    } catch (_e) { /* not in an extension context */ }
+    return '0.0.0';
+  })();
 
   /**
    * Score buckets. A candidate's 0–100 score maps to exactly one bucket.
@@ -34,7 +44,19 @@ globalThis.SubSniper = globalThis.SubSniper || {};
     cold: { label: 'Cold', emoji: '❄️', color: '#5c6bc0' }
   });
 
-  /** Free-tier limits. Pro removes all of these (see license.js). */
+  /**
+   * v0.1.0 SHIPS FREE-ONLY — every feature is unlocked and there is no
+   * paywall, because no billing product exists yet. Shipping an "Upgrade"
+   * CTA that 404s (or a paywall bypassable by reading the bundle) would be
+   * dishonest, so the gate is simply off. See license.js for the sketch of
+   * how to re-introduce real, server-verified gating once billing exists.
+   */
+  NS.UNLOCKED = true;
+
+  /**
+   * Retained for when billing returns. NOT enforced in v0.1.0.
+   * @type {Readonly<{FREE_PRODUCTS:number, FREE_LEADS:number}>}
+   */
   NS.LIMITS = Object.freeze({
     FREE_PRODUCTS: 1,
     FREE_LEADS: 15
@@ -58,17 +80,33 @@ globalThis.SubSniper = globalThis.SubSniper || {};
 
   /** Message types passed between content ⇄ background ⇄ popup/options. */
   NS.MSG = Object.freeze({
-    OPEN_CHECKOUT: 'subsniper:open-checkout',
+    // v0.1.0 ships free-only — no checkout message (see license.js).
     AI_DRAFT: 'subsniper:ai-draft',
     PING: 'subsniper:ping'
   });
 
-  /** chrome.storage keys. Settings live in sync, leads in local. */
+  /**
+   * chrome.storage keys.
+   *   SETTINGS       → sync   (small, roaming: toggles, model, tone)
+   *   SETTINGS_LOCAL → local  (products + tuned lexicon; these can exceed the
+   *                            8KB-per-item sync quota, which fails SILENTLY)
+   *   API_KEY        → local  (never synced, never read by a content script)
+   *   LEADS / STATS  → local
+   */
   NS.KEYS = Object.freeze({
     SETTINGS: 'subsniper_settings',
+    SETTINGS_LOCAL: 'subsniper_settings_local',
+    API_KEY: 'subsniper_api_key',
     LEADS: 'subsniper_leads',
     STATS: 'subsniper_stats'
   });
+
+  /**
+   * Which settings fields live in chrome.storage.local rather than sync.
+   * products/intentLexicon are unbounded in size — sync's per-item quota is
+   * 8KB and writes over it fail silently, so they must not go to sync.
+   */
+  NS.LOCAL_SETTING_FIELDS = Object.freeze(['products', 'intentLexicon']);
 
   /**
    * Factory so every read gets a fresh, un-shared copy (no accidental
@@ -93,7 +131,10 @@ globalThis.SubSniper = globalThis.SubSniper || {};
       // null ⇒ use the engine's built-in lexicon. Options can materialise a
       // full editable copy here to tune weights.
       intentLexicon: null,
-      anthropicKey: '',
+      // NOTE: the Anthropic API key is deliberately NOT part of settings.
+      // It lives alone in chrome.storage.local under KEYS.API_KEY so it is
+      // never replicated to Google's sync servers and never loaded into a
+      // content script. See storage.js getApiKey/setApiKey/hasApiKey.
       model: 'claude-sonnet-5',
       draftTone: 'helpful',
       minScoreToBadge: 40,

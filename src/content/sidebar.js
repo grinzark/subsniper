@@ -243,8 +243,8 @@ globalThis.SubSniper = globalThis.SubSniper || {};
     async _onSave(lead, btn) {
       const record = toLeadRecord(lead);
       const res = await NS.Storage.saveLead(record);
-      if (!res.ok && res.reason === 'free-limit') {
-        this._toast('Free plan saves ' + NS.LIMITS.FREE_LEADS + ' leads. Upgrade to Pro for unlimited.', 'upgrade');
+      if (!res.ok) {
+        this._toast('Could not save: ' + (res.error || 'storage error'), 'info');
         return;
       }
       lead.saved = true;
@@ -304,16 +304,24 @@ globalThis.SubSniper = globalThis.SubSniper || {};
       this._renderVariants(lead, product, tone);
     },
 
+    /**
+     * AI draft row. Unlocked in v0.1.0 (no paywall).
+     *
+     * SECURITY: this content script never sees the Anthropic key. It only
+     * learns whether one EXISTS (a boolean from storage.local); the key is
+     * read by the background worker at send time.
+     */
     _aiRow(lead, product, settings) {
-      const hasKey = !!(settings.anthropicKey && settings.anthropicKey.trim());
-      const isPro = !!(settings.license && settings.license.pro);
       const btn = h('button', {
         class: 'ss-btn ss-btn-ai',
         text: '✨ Generate with AI',
         onClick: async (e) => {
           const b = e.currentTarget;
-          if (!isPro) { this._toast('AI drafts are a Pro feature. Upgrade to unlock.', 'upgrade'); return; }
-          if (!hasKey) { this._toast('Add your Anthropic API key in Options to use AI drafts.', 'info'); return; }
+          const hasKey = await NS.Storage.hasApiKey();
+          if (!hasKey) {
+            this._toast('Add your Anthropic API key in Options to use AI drafts.', 'info');
+            return;
+          }
           b.disabled = true; b.textContent = '✨ Generating…';
           const request = NS.Draft.buildAiRequest(lead, product, settings);
           const out = await sendAiDraft(request);
@@ -322,10 +330,13 @@ globalThis.SubSniper = globalThis.SubSniper || {};
           this._prependVariant({ label: 'AI draft', text: out.text }, lead, product);
         }
       });
-      const note = h('span', { class: 'ss-ai-note', text: isPro
-        ? (hasKey ? 'Uses your Anthropic key · ' + (settings.model || 'claude-sonnet-5') : 'Add your API key in Options')
-        : 'Pro feature' });
-      return h('div', { class: 'ss-ai-row' }, [btn, note]);
+      const note = h('span', { class: 'ss-ai-note', text: 'Optional · sends this post to Anthropic with your own key' });
+      const row = h('div', { class: 'ss-ai-row' }, [btn, note]);
+      // Reflect key presence once resolved, without ever holding the key.
+      NS.Storage.hasApiKey().then((hasKey) => {
+        if (!hasKey) note.textContent = 'Optional · add your Anthropic key in Options to enable';
+      });
+      return row;
     },
 
     _renderVariants(lead, product, tone) {
@@ -400,15 +411,11 @@ globalThis.SubSniper = globalThis.SubSniper || {};
 
     _toast(msg, kind) {
       const t = h('div', { class: 'ss-toast ss-toast-' + (kind || 'ok') }, [
-        h('span', { text: msg }),
-        kind === 'upgrade' ? h('button', {
-          class: 'ss-toast-cta', text: 'Upgrade',
-          onClick: () => NS.License.startCheckout()
-        }) : null
+        h('span', { text: msg })
       ]);
       this._root.appendChild(t);
       requestAnimationFrame(() => t.classList.add('is-in'));
-      setTimeout(() => { t.classList.remove('is-in'); setTimeout(() => t.remove(), 300); }, kind === 'upgrade' ? 5000 : 2400);
+      setTimeout(() => { t.classList.remove('is-in'); setTimeout(() => t.remove(), 300); }, 3200);
     }
   };
 

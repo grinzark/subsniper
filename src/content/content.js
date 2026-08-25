@@ -22,7 +22,8 @@
     leadsById: new Map(), // id → scored lead (with node)
     scanScheduled: false,
     observer: null,
-    booted: false
+    booted: false,
+    lastHref: (typeof location !== 'undefined' ? location.href : '')
   };
 
   function activeProducts() {
@@ -88,6 +89,17 @@
   function scan() {
     state.scanScheduled = false;
     if (!state.settings || !state.settings.enabled) return;
+
+    // SPA navigation detection. Reddit routes client-side, and a content
+    // script cannot observe the page's own history.pushState calls (it runs
+    // in an isolated world, so patching History.prototype there is invisible
+    // to page code). Comparing the URL inside the throttled scan is the only
+    // reliable signal available to us — the MutationObserver fires on every
+    // route change anyway, so this costs nothing extra.
+    if (location.href !== state.lastHref) {
+      state.lastHref = location.href;
+      state.leadsById.clear();
+    }
     const products = activeProducts();
     if (!products.length) {
       NS.Sidebar.update([], state.settings);
@@ -213,16 +225,9 @@
       else scheduleScan();
     });
 
-    // Reddit is an SPA — re-scan on history navigation.
+    // Reddit is an SPA. popstate covers back/forward; forward navigation is
+    // caught by the URL comparison inside scan() (see the note there).
     window.addEventListener('popstate', scheduleScan);
-    const origPush = history.pushState;
-    history.pushState = function () {
-      const r = origPush.apply(this, arguments);
-      // Clear the page-lead map on navigation.
-      state.leadsById.clear();
-      scheduleScan();
-      return r;
-    };
   }
 
   if (document.readyState === 'loading') {
