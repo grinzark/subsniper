@@ -1,0 +1,77 @@
+/* SubSniper — popup.css */
+:root {
+  --bg: #ffffff; --bg-2: #f6f7f9; --bg-3: #eceef1;
+  --fg: #14161a; --fg-2: #5b616e; --muted: #868d99;
+  --border: #e2e5ea; --accent: #ff5414; --accent-2: #ff7a00;
+  --pos: #1f9d55;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181d; --bg-2: #1d2026; --bg-3: #262a32;
+    --fg: #f2f4f7; --fg-2: #b7bdc9; --muted: #838a97; --border: #2c313a;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 320px; }
+body { font-family: var(--font); background: var(--bg); color: var(--fg); -webkit-font-smoothing: antialiased; }
+.pp { padding: 14px; }
+
+.pp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.pp-brand { display: flex; align-items: center; gap: 10px; }
+.pp-mark {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  display: flex; align-items: center; justify-content: center; color: #fff;
+}
+.pp-name { font-weight: 800; font-size: 15px; letter-spacing: -.01em; }
+.pp-tag { font-size: 11px; color: var(--muted); font-weight: 600; }
+.pp-tag.is-pro { color: var(--accent); }
+
+/* Toggle switch */
+.pp-switch { position: relative; display: inline-block; width: 44px; height: 26px; }
+.pp-switch input { opacity: 0; width: 0; height: 0; }
+.pp-slider {
+  position: absolute; inset: 0; cursor: pointer;
+  background: var(--bg-3); border-radius: 999px; transition: .2s;
+}
+.pp-slider::before {
+  content: ""; position: absolute; height: 20px; width: 20px; left: 3px; top: 3px;
+  background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.pp-switch input:checked + .pp-slider { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.pp-switch input:checked + .pp-slider::before { transform: translateX(18px); }
+
+.pp-stats { display: flex; gap: 10px; margin-bottom: 12px; }
+.pp-stat {
+  flex: 1; background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px; text-align: center;
+}
+.pp-stat-num { font-size: 26px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.pp-stat-lbl { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+.pp-hint {
+  font-size: 12px; line-height: 1.5; color: var(--fg-2);
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;
+}
+.pp-hint b { color: var(--fg); }
+
+.pp-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.pp-btn {
+  border: 1px solid var(--border); background: var(--bg); color: var(--fg);
+  padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer;
+  font-family: var(--font); transition: all .12s ease;
+}
+.pp-btn:hover { background: var(--bg-3); }
+.pp-btn-primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.pp-btn-primary:hover { filter: brightness(1.15); background: var(--fg); }
+.pp-btn-upgrade {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border: none;
+}
+.pp-btn-upgrade:hover { filter: brightness(1.07); }
+.pp-btn-upgrade.is-pro { background: rgba(31,157,85,.12); color: var(--pos); }
+
+.pp-foot { display: flex; flex-direction: column; gap: 3px; text-align: center; }
+.pp-foot span { font-size: 10.5px; color: var(--muted); }
+.pp-guard { font-weight: 600; }

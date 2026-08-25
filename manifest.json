@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "SubSniper — Reddit Lead Sniper",
+  "version": "1.0.0",
+  "description": "Score buying-intent on the Reddit threads you're already reading, save the hot leads, and draft a reply you copy & paste yourself. 100% client-side. Never posts for you.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["https://*.reddit.com/*"],
+  "optional_host_permissions": ["https://api.anthropic.com/*"],
+  "background": {
+    "service_worker": "src/background/service-worker.js"
+  },
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "SubSniper",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    }
+  },
+  "options_page": "src/options/options.html",
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.reddit.com/*"],
+      "run_at": "document_idle",
+      "js": [
+        "src/common/constants.js",
+        "src/common/storage.js",
+        "src/common/intent-engine.js",
+        "src/common/dom-reddit.js",
+        "src/common/draft.js",
+        "src/common/license.js",
+        "src/content/sidebar.js",
+        "src/content/content.js"
+      ],
+      "css": [
+        "src/content/badges.css",
+        "src/content/sidebar.css"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/icon48.png", "assets/icon128.png"],
+      "matches": ["*://*.reddit.com/*"]
+    }
+  ]
+}

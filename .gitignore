@@ -1,0 +1,8 @@
+# Dependencies
+node_modules/
+
+# Packaged extension archives
+*.zip
+
+# macOS
+.DS_Store

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SubSniper</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="pp">
+    <header class="pp-head">
+      <div class="pp-brand">
+        <span class="pp-mark" id="pp-mark"></span>
+        <div>
+          <div class="pp-name">SubSniper</div>
+          <div class="pp-tag" id="pp-plan">Free plan</div>
+        </div>
+      </div>
+      <label class="pp-switch" title="Turn SubSniper on/off on Reddit">
+        <input type="checkbox" id="pp-enabled" />
+        <span class="pp-slider"></span>
+      </label>
+    </header>
+
+    <section class="pp-stats">
+      <div class="pp-stat">
+        <div class="pp-stat-num" id="pp-found">0</div>
+        <div class="pp-stat-lbl">Leads found today</div>
+      </div>
+      <div class="pp-stat">
+        <div class="pp-stat-num" id="pp-saved">0</div>
+        <div class="pp-stat-lbl">Saved leads</div>
+      </div>
+    </section>
+
+    <section class="pp-hint" id="pp-hint">
+      Open any <b>reddit.com</b> thread or search — matching posts get an intent
+      badge, and hot leads land in the side panel.
+    </section>
+
+    <section class="pp-actions">
+      <button class="pp-btn pp-btn-primary" id="pp-options">Manage products &amp; keywords</button>
+      <button class="pp-btn pp-btn-upgrade" id="pp-upgrade">✦ Upgrade to Pro</button>
+    </section>
+
+    <footer class="pp-foot">
+      <span id="pp-limits"></span>
+      <span class="pp-guard">100% on-device · never posts for you</span>
+    </footer>
+  </div>
+
+  <script src="../common/constants.js"></script>
+  <script src="../common/storage.js"></script>
+  <script src="../common/license.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

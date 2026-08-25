@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SubSniper — Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="masthead">
+      <div class="brand">
+        <span class="brand-mark" id="brand-mark"></span>
+        <div>
+          <h1>SubSniper</h1>
+          <p class="sub">Reddit lead sniper · settings</p>
+        </div>
+      </div>
+      <div class="mast-right">
+        <span class="plan-pill" id="plan-pill">Free</span>
+        <span class="save-state" id="save-state"></span>
+      </div>
+    </header>
+
+    <div class="guard-banner">
+      <b>How it works &amp; why it's safe:</b> SubSniper only reads reddit.com pages
+      you're already viewing in your own logged-in session — no Reddit API, no
+      scraping, no server. It <b>never</b> posts, comments, upvotes, or acts on your
+      behalf. Drafts are copy-paste only.
+    </div>
+
+    <!-- PRODUCTS -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Your products &amp; keywords</h2>
+        <p>A post is only a lead if it mentions one of your keywords or synonyms.</p>
+      </div>
+      <div id="products"></div>
+      <button class="btn btn-add" id="add-product">+ Add product</button>
+      <p class="limit-note" id="product-limit"></p>
+    </section>
+
+    <!-- INTENT TUNER -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Buying-intent signals</h2>
+        <p>Tune how much each signal moves the score. Positives add, negatives subtract.
+          Hot ≥ 70 · Warm 40–69 · Cold &lt; 40.</p>
+      </div>
+      <div class="lex-cols">
+        <div>
+          <h3 class="lex-title lex-pos">Positive signals</h3>
+          <div id="lex-positive"></div>
+        </div>
+        <div>
+          <h3 class="lex-title lex-neg">Negative signals</h3>
+          <div id="lex-negative"></div>
+        </div>
+      </div>
+      <button class="btn btn-ghost" id="lex-reset">Reset to defaults</button>
+    </section>
+
+    <!-- AI DRAFTS -->
+    <section class="card">
+      <div class="card-head">
+        <h2>AI drafts <span class="pro-badge">Pro</span></h2>
+        <p>Optional. Bring your own Anthropic API key. Requests go directly from your
+          browser to Anthropic — nowhere else. Leave blank to use the built-in local
+          templates (no network).</p>
+      </div>
+      <div class="field">
+        <label for="ai-key">Anthropic API key</label>
+        <input type="password" id="ai-key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+        <p class="field-hint">Stored only in your browser's synced storage. <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Get a key ↗</a></p>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="ai-model">Model</label>
+          <select id="ai-model"></select>
+        </div>
+        <div class="field">
+          <label for="ai-tone">Default draft tone</label>
+          <select id="ai-tone">
+            <option value="helpful">Helpful</option>
+            <option value="concise">Concise</option>
+            <option value="founder-to-founder">Founder-to-founder</option>
+          </select>
+        </div>
+      </div>
+      <p class="field-hint" id="ai-perm-note"></p>
+    </section>
+
+    <!-- LICENSE -->
+    <section class="card">
+      <div class="card-head">
+        <h2>License</h2>
+        <p>Free: 1 product · 15 saved leads · template drafts. Pro: unlimited + AI drafts.</p>
+      </div>
+      <div id="license-box"></div>
+    </section>
+
+    <!-- DISPLAY -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Display</h2>
+      </div>
+      <div class="field">
+        <label for="min-score">Only badge posts scoring at least: <b id="min-score-val">40</b></label>
+        <input type="range" id="min-score" min="0" max="90" step="5" />
+      </div>
+    </section>
+
+    <footer class="foot">
+      SubSniper v<span id="ver"></span> · runs entirely on your device · never posts for you
+    </footer>
+  </div>
+
+  <script src="../common/constants.js"></script>
+  <script src="../common/storage.js"></script>
+  <script src="../common/intent-engine.js"></script>
+  <script src="../common/license.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

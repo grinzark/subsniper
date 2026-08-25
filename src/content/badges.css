@@ -1,0 +1,84 @@
+/* SubSniper — badges.css
+   Inline intent badge injected onto each qualifying post/comment.
+   Scoped hard to .subsniper-badge so Reddit's CSS can't bleed in. */
+
+.subsniper-badge {
+  all: unset;
+  box-sizing: border-box !important;
+  position: absolute !important;
+  top: 6px !important;
+  right: 6px !important;
+  z-index: 2147483000 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 3px 9px 3px 7px !important;
+  border-radius: 999px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  letter-spacing: .01em !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  border: 1px solid rgba(255, 255, 255, .18) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .28) !important;
+  backdrop-filter: saturate(1.2) !important;
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease !important;
+}
+
+.subsniper-badge:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .34) !important;
+  filter: brightness(1.06) !important;
+}
+
+.subsniper-badge .subsniper-badge-dot {
+  width: 7px !important;
+  height: 7px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, .95) !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .22) !important;
+  flex: 0 0 auto !important;
+}
+
+.subsniper-badge .subsniper-badge-score {
+  font-variant-numeric: tabular-nums !important;
+  font-weight: 800 !important;
+}
+
+.subsniper-badge .subsniper-badge-label {
+  text-transform: uppercase !important;
+  font-size: 9px !important;
+  opacity: .92 !important;
+}
+
+/* Bucket colors — vivid, Reddit-adjacent orange for Hot. */
+.subsniper-badge[data-bucket="hot"] {
+  background: linear-gradient(135deg, #ff5414, #ff7a00) !important;
+}
+.subsniper-badge[data-bucket="warm"] {
+  background: linear-gradient(135deg, #ff9800, #f6a821) !important;
+  color: #241500 !important;
+}
+.subsniper-badge[data-bucket="warm"] .subsniper-badge-dot {
+  background: #241500 !important;
+  box-shadow: 0 0 0 2px rgba(36, 21, 0, .18) !important;
+}
+.subsniper-badge[data-bucket="cold"] {
+  background: linear-gradient(135deg, #5c6bc0, #6d7bd6) !important;
+}
+
+/* Subtle pulse on Hot to draw the eye. */
+.subsniper-badge[data-bucket="hot"] {
+  animation: subsniper-pulse 2.4s ease-in-out infinite !important;
+}
+@keyframes subsniper-pulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(255, 84, 20, .35); }
+  50%      { box-shadow: 0 2px 16px rgba(255, 84, 20, .6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .subsniper-badge[data-bucket="hot"] { animation: none !important; }
+}
