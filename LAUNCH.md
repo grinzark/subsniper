@@ -20,11 +20,11 @@ user-initiated.
 
 | Done (in this repo) | Only you can do |
 |---|---|
-| Extension built, tested, zipped (`SubSniper-v0.1.0.zip`) | Push to GitHub + turn on Pages (step 1) |
+| Extension built, tested, zipped (`SubSniper-v0.2.0.zip`) | Push to GitHub + turn on Pages (step 1) |
 | Privacy policy written (`PRIVACY.md`) + hosted-page version (`docs/index.html`) | Register the CWS developer account, pay the $5 (step 2) |
 | Limited Use statement included verbatim | Upload, fill the listing, submit (steps 2–4) |
 | Listing copy, privacy-tab answers, screenshot plan (below) | Take the 5 screenshots (step 5) |
-| Lemon Squeezy billing wired, server-verified, switched OFF by config | Create the LS store/product and fill 4 config values (step 6) |
+| Lemon Squeezy billing wired, server-verified, **switched ON** with the live Zarkside store config (v0.2.0) | Flip the LS store from test mode to live, then test the money path (step 6) |
 
 ---
 
@@ -74,7 +74,7 @@ Then in the browser:
    then verify the email (there's a *Verify* link). An unverified contact
    email blocks publishing.
 4. Click **+ New item**.
-5. **Upload** `SubSniper-v0.1.0.zip` from the repo root. The console parses the
+5. **Upload** `SubSniper-v0.2.0.zip` from the repo root. The console parses the
    manifest and shows any errors — there should be none.
 6. You'll land on the item's **Store listing** tab. Fill it using section 3.
    - **Category:** *Productivity* → *Workflow & Planning* (fallback: *Social &
@@ -120,7 +120,7 @@ HOW IT WORKS — AND WHY IT'S SAFE
 • Optional AI drafts use YOUR OWN Anthropic API key, sent directly from your browser to Anthropic — only when you click "Generate with AI". Leave the key blank and SubSniper is fully offline.
 
 FREE vs PRO
-Free tracks one product with template drafts. Pro (subscription via Lemon Squeezy) unlocks unlimited products and AI drafts. Until Pro is switched on, everything is free.
+Free tracks one product with template drafts. Pro (£29/month, billed by Lemon Squeezy — cancel any time) unlocks unlimited products and AI drafts with your own Anthropic key.
 
 Built by a founder, for founders: this is the in-thread tool I wanted for my own Reddit outreach.
 ```
@@ -222,57 +222,48 @@ tile is optional but worth 10 minutes: icon on the dark background + the title.
 
 ---
 
-## 6. Switch on Pro billing (Lemon Squeezy) — when you're ready to charge
+## 6. Pro billing is ON (v0.2.0) — Lemon Squeezy live config
 
-Billing is **OFF** in `SubSniper-v0.1.0.zip` by design: every field in
-`src/common/billing-config.js` is empty, so the extension is free-only with no
-upgrade buttons. Flip it on like this:
+`src/common/billing-config.js` carries the real Zarkside store values, so the Pro
+gate is switched on in `SubSniper-v0.2.0.zip`:
 
-1. **Create a Lemon Squeezy account + store** at https://app.lemonsqueezy.com
-   — store name **zarkside**; legal/payout details as **Mohamed Y. (trading as zarkside)**, UK
-   sole trader. Lemon Squeezy is the Merchant of Record —
-   it handles VAT, receipts and refunds.
-2. **Products → New product → "SubSniper Pro"**, type **Subscription**, add a
-   monthly variant (and optionally yearly). Suggested launch price: £9/mo.
-3. On the product, enable **"Generate license keys"** and set the activation
-   limit (3 is generous for one person's browsers).
-4. Collect the four values:
-   - **Store ID** — Settings → Stores (numeric)
-   - **Product ID** — the product's page URL / API id (numeric)
-   - **Variant ID** — the subscription variant's id (numeric)
-   - **Checkout URL** — the product's *Share* link, e.g.
-     `https://<store>.lemonsqueezy.com/checkout/buy/<uuid>`
-5. Fill them into `src/common/billing-config.js`:
-   ```js
-   const LEMON_SQUEEZY = {
-     storeId: '12345',
-     productId: '67890',
-     variantId: '11111',
-     checkoutUrl: 'https://moe.lemonsqueezy.com/checkout/buy/xxxxxxxx-...'
-   };
-   ```
-   The moment all four are non-empty, the Pro gate turns on: Free = 1 product +
-   template drafts; Pro = unlimited products + AI drafts; "Upgrade" opens the
-   checkout. Nothing else to change.
-6. Bump `"version"` in `manifest.json` (e.g. `0.2.0`), run the checks, rebuild
-   the zip, and upload the new version in the dev console (**Package → Upload
-   new package**). Update the listing description's FREE vs PRO paragraph.
-   ```bash
-   node --test src/common/*.test.mjs
-   rm -f SubSniper-v0.2.0.zip && zip -r -X SubSniper-v0.2.0.zip manifest.json src assets \
-     -x "src/common/*.test.mjs" "assets/generate-icon.py" "assets/icon.png" "assets/icon1024.png" "*.DS_Store"
-   ```
-7. **Test the money path yourself before announcing:** buy Pro with Lemon
-   Squeezy's *test mode* card, paste the license key into Options → *Plan &
-   license* → **Activate**, confirm the pill turns **Pro**, then cancel the test
-   subscription and confirm "Re-check now" drops you back to Free.
+| Field | Value | Notes |
+|---|---|---|
+| `storeId` | `465122` | Store "Zarkside" |
+| `productId` | `1332124` | SubSniper Pro — **£29.00/month** subscription, license keys ON, activation limit 5 |
+| `checkoutUrl` | `https://zarkside.lemonsqueezy.com/checkout/buy/a59439d9-cae6-4d63-9fbf-8c06dd6908d9` | Opened by every "Upgrade" / "Get Pro" button |
+| `variantId` | *(empty — optional)* | Not needed for verification. Fill in later from the first activated license: Options → Plan & license shows "variant <id>" once Pro is active (it's `meta.variant_id` in the LS response). |
 
-How verification works (so you can answer support questions): activation calls
-`POST api.lemonsqueezy.com/v1/licenses/activate`; every ~24h the background
-worker calls `/v1/licenses/validate`; Pro is granted **only** when the server
-says the key is valid **and** its status is `active`. If Lemon Squeezy can't be
-reached, Pro survives up to 3 days on the last good check, then falls back to
-Free. There is no client-side check to bypass.
+What "on" means: **Free** = 1 tracked product + template drafts. **Pro** =
+unlimited products + AI drafts. Pro is granted only when Lemon Squeezy's server
+says the key is valid **and** `active`, and the response's `store_id` +
+`product_id` match the values above. Re-checked every ~24h; 3-day offline grace.
+
+### Before you announce — two things, in this order
+
+1. **Test the money path in TEST MODE (the store is in test mode right now).**
+   Buy Pro on the checkout URL with Lemon Squeezy's test card, open the
+   receipt's license key, paste it into Options → *Plan & license* →
+   **Activate** (grant the `api.lemonsqueezy.com` permission when prompted),
+   and confirm the pill turns **Pro** and *Add product* is no longer capped.
+   Then cancel the test subscription in LS and click **Re-check now** — you
+   should drop back to **Free** with "Subscription expired".
+2. **Switch the store to LIVE mode** in the Lemon Squeezy dashboard (the
+   test/live toggle). Test-mode purchases and license keys do **not** carry
+   over — the checkout URL and product/store ids stay the same, so no code
+   change is needed. Do one real £29 purchase yourself, activate, then refund
+   it from LS to confirm "Re-check now" revokes Pro.
+
+### Changing the config later
+
+Edit the values, bump `"version"` in `manifest.json`, run the checks, rebuild
+the zip, and upload it as a new package in the dev console.
+
+```bash
+node --test src/common/*.test.mjs
+V=0.3.0; rm -f SubSniper-v*.zip && zip -r -X SubSniper-v$V.zip manifest.json src assets \
+  -x "src/common/*.test.mjs" "assets/generate-icon.py" "assets/icon.png" "assets/icon1024.png" "*.DS_Store"
+```
 
 ---
 
@@ -280,7 +271,7 @@ Free. There is no client-side check to bypass.
 
 - [ ] Privacy page live at `https://grinzark.github.io/subsniper/` and shows the Limited Use sentence
 - [ ] CWS developer account registered, $5 paid, contact email **verified**
-- [ ] `SubSniper-v0.1.0.zip` uploads with zero manifest warnings
+- [ ] `SubSniper-v0.2.0.zip` uploads with zero manifest warnings
 - [ ] Title / short / full description pasted from section 3 (short ≤ 132 chars)
 - [ ] Category = Productivity, language set
 - [ ] 5 screenshots at 1280×800 + 128×128 icon uploaded
@@ -289,7 +280,8 @@ Free. There is no client-side check to bypass.
 - [ ] Distribution = Public, free
 - [ ] `node --test src/common/*.test.mjs` green; all `node --check` pass (they are as of this commit)
 - [ ] Manifest version matches the zip name
-- [ ] (Only if billing on) all 4 `billing-config.js` fields set and the money path tested in LS test mode
+- [ ] Billing ON: `storeId` / `productId` / `checkoutUrl` set in `billing-config.js` (`variantId` optional) — they are
+- [ ] Money path tested in LS test mode, then store switched to **live** (section 6)
 
 ---
 

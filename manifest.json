@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SubSniper — Reddit Lead Sniper",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Score buying-intent on the Reddit threads you're already reading, save the hot leads, and draft a reply you copy & paste yourself. Runs locally by default — optional AI drafts use your own Anthropic key. Never posts for you.",
   "permissions": [
     "storage"

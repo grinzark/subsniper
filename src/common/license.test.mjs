@@ -43,9 +43,14 @@ const activeCache = (overrides) => Object.assign({
   variantId: '11111'
 }, overrides || {});
 
-test('shipped billing-config is EMPTY ⇒ billing disabled out of the box', () => {
-  assert.equal(BillingConfig.isBillingEnabled(), false);
-  assert.equal(License.isBillingEnabled(), false);
+test('shipped billing-config is LIVE (v0.2.0) ⇒ billing enabled out of the box', () => {
+  const c = BillingConfig.LEMON_SQUEEZY;
+  assert.ok(c.storeId && c.productId && c.checkoutUrl, 'three required fields set');
+  assert.match(c.checkoutUrl, /^https:\/\/zarkside\.lemonsqueezy\.com\/checkout\/buy\//);
+  assert.equal(BillingConfig.isBillingEnabled(), true);
+  assert.equal(License.isBillingEnabled(), true);
+  // variantId is optional and is currently unset — that must not disable billing.
+  assert.equal(c.variantId, '');
 });
 
 test('config empty ⇒ free-only, everything unlocked, no gate', () => {
@@ -60,11 +65,24 @@ test('config empty ⇒ free-only, everything unlocked, no gate', () => {
   assert.equal(License.computeStatus(EMPTY_CFG, activeCache(), NOW).unlocked, true);
 });
 
-test('partially-filled config ⇒ still disabled (all four fields required)', () => {
-  for (const missing of ['storeId', 'productId', 'variantId', 'checkoutUrl']) {
+test('variantId is OPTIONAL: empty variantId with the other three set ⇒ billing ON', () => {
+  const cfg = Object.assign({}, LIVE_CFG, { variantId: '' });
+  assert.equal(BillingConfig.isBillingEnabled(cfg), true);
+  const free = License.computeStatus(cfg, null, NOW);
+  assert.equal(free.billing, true);
+  assert.equal(free.unlocked, false);
+  assert.equal(free.limits.products, 1);
+  // A server-verified active key still yields Pro under a variant-less config.
+  assert.equal(License.computeStatus(cfg, activeCache(), NOW).pro, true);
+  // Cached variant id from the server is informational only — never compared.
+  assert.equal(License.computeStatus(cfg, activeCache({ variantId: '99999' }), NOW).pro, true);
+});
+
+test('any of storeId / productId / checkoutUrl missing ⇒ billing OFF', () => {
+  for (const missing of ['storeId', 'productId', 'checkoutUrl']) {
     const cfg = Object.assign({}, LIVE_CFG, { [missing]: '' });
     assert.equal(BillingConfig.isBillingEnabled(cfg), false, 'missing ' + missing);
-    assert.equal(License.computeStatus(cfg, activeCache(), NOW).unlocked, true);
+    assert.equal(License.computeStatus(cfg, activeCache(), NOW).unlocked, true, 'missing ' + missing);
   }
 });
 

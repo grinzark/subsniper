@@ -10,19 +10,24 @@
  * client-only check.
  *
  * BEHAVIOUR:
- *   • Any field empty  ⇒ billing is OFF. The extension is free-only: every
- *                        feature unlocked, no upgrade CTAs, no license UI.
- *                        (This is how v0.1.0 ships.)
- *   • All fields set   ⇒ billing is ON. Free = 1 tracked product + template
+ *   • storeId, productId or checkoutUrl empty ⇒ billing is OFF. The extension
+ *                        is free-only: every feature unlocked, no upgrade CTAs,
+ *                        no license UI.
+ *   • all three set    ⇒ billing is ON. Free = 1 tracked product + template
  *                        drafts. Pro = unlimited products + AI drafts.
  *                        "Upgrade" opens checkoutUrl.
+ *   • variantId is OPTIONAL. It is never used for verification — the worker
+ *     enforces store_id + product_id on the server's response and merely
+ *     caches meta.variant_id. Fill it in later from the first activated
+ *     license (Options → Plan & license shows "variant <id>" once active).
  *
- * TO GO LIVE, fill in all four values from your Lemon Squeezy dashboard:
- *   storeId     Settings → Stores → the numeric id (e.g. "12345")
- *   productId   Products → your SubSniper Pro product → numeric id
- *   variantId   The subscription variant's numeric id (monthly/yearly)
- *   checkoutUrl The product's share/checkout link, e.g.
- *               "https://<store>.lemonsqueezy.com/checkout/buy/<variant-uuid>"
+ * LIVE CONFIG (v0.2.0) — Lemon Squeezy store "Zarkside":
+ *   storeId     465122
+ *   productId   1332124   SubSniper Pro — £29.00/month subscription,
+ *                         license keys ON, activation limit 5
+ *   checkoutUrl the product's checkout link (below)
+ *   variantId   (not exposed in the LS dashboard without an API key — left
+ *                empty; optional, see above)
  *
  * The license key must have "Generate license keys" enabled on the product.
  * ------------------------------------------------------------------
@@ -33,23 +38,24 @@ globalThis.SubSniper = globalThis.SubSniper || {};
   'use strict';
 
   const LEMON_SQUEEZY = {
-    storeId: '',
-    productId: '',
-    variantId: '',
-    checkoutUrl: ''
+    storeId: '465122',
+    productId: '1332124',
+    variantId: '',   // optional — fill from the first license's meta.variant_id
+    checkoutUrl: 'https://zarkside.lemonsqueezy.com/checkout/buy/a59439d9-cae6-4d63-9fbf-8c06dd6908d9'
   };
 
   /**
-   * Billing is enabled only when EVERY field is a non-empty string and the
-   * checkout URL is an https Lemon Squeezy link. Anything less ⇒ off.
-   * Pure; also used by the unit tests with explicit config objects.
+   * Billing is enabled when storeId, productId and checkoutUrl are non-empty
+   * strings and the checkout URL is an https Lemon Squeezy link. variantId is
+   * OPTIONAL and does not affect this. Pure; the unit tests pass explicit
+   * config objects.
    * @param {Object} [cfg] override (tests) — defaults to LEMON_SQUEEZY
    */
   function isBillingEnabled(cfg) {
     const c = cfg || LEMON_SQUEEZY;
     if (!c) return false;
-    const fields = ['storeId', 'productId', 'variantId', 'checkoutUrl'];
-    for (const f of fields) {
+    const required = ['storeId', 'productId', 'checkoutUrl'];
+    for (const f of required) {
       if (typeof c[f] !== 'string' || !c[f].trim()) return false;
     }
     return /^https:\/\/[a-z0-9.-]+\.lemonsqueezy\.com\//i.test(c.checkoutUrl.trim());

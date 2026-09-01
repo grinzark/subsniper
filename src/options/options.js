@@ -317,7 +317,8 @@
       const meta = document.createElement('p');
       meta.className = 'license-meta';
       meta.textContent = 'Last verified with Lemon Squeezy: ' + new Date(cache.validatedAt).toLocaleString() +
-        (st.stale ? ' · re-checking' : '');
+        (st.stale ? ' · re-checking' : '') +
+        (cache.variantId ? ' · variant ' + cache.variantId : '');
       box.appendChild(meta);
     }
 
