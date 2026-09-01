@@ -18,21 +18,35 @@
   async function render() {
     $('pp-mark').innerHTML = crosshairSvg(20);
 
-    const [settings, stats] = await Promise.all([
+    const [settings, stats, lic] = await Promise.all([
       NS.Storage.getSettings(),
-      NS.Storage.getStats()
+      NS.Storage.getStats(),
+      NS.License.getStatus()
     ]);
 
     $('pp-enabled').checked = !!settings.enabled;
     $('pp-found').textContent = String(stats.found || 0);
     $('pp-saved').textContent = String(stats.saved || 0);
 
-    // v0.1.0 ships free-only with everything unlocked — no plan/upgrade UI.
-    $('pp-plan').textContent = 'v' + NS.VERSION + ' · free';
-
+    // Plan UI only exists when billing is switched on (billing-config.js).
     const products = (settings.products || []).length;
-    $('pp-limits').textContent =
-      products + (products === 1 ? ' product' : ' products') + ' tracked · all features unlocked';
+    const plural = products === 1 ? ' product' : ' products';
+    const planEl = $('pp-plan');
+    const upBtn = $('pp-upgrade');
+    planEl.classList.toggle('is-pro', !!lic.pro);
+    if (!lic.billing) {
+      planEl.textContent = 'v' + NS.VERSION + ' · free';
+      upBtn.hidden = true;
+      $('pp-limits').textContent = products + plural + ' tracked · all features unlocked';
+    } else if (lic.pro) {
+      planEl.textContent = 'Pro';
+      upBtn.hidden = true;
+      $('pp-limits').textContent = products + plural + ' tracked · unlimited products + AI drafts';
+    } else {
+      planEl.textContent = 'Free plan';
+      upBtn.hidden = false;
+      $('pp-limits').textContent = 'Free tracks ' + NS.LIMITS.FREE_PRODUCTS + ' product · Pro: unlimited + AI drafts';
+    }
   }
 
   function wire() {
@@ -43,6 +57,7 @@
       if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
       else window.open(chrome.runtime.getURL('src/options/options.html'));
     });
+    $('pp-upgrade').addEventListener('click', () => NS.License.startCheckout());
   }
 
   document.addEventListener('DOMContentLoaded', () => { wire(); render(); });

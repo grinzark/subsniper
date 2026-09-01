@@ -55,11 +55,21 @@
     host.innerHTML = '';
     (S.products || []).forEach((p, i) => host.appendChild(productCard(p, i)));
 
-    // v0.1.0 ships free-only with no caps.
-    $('#add-product').disabled = false;
+    // The cap is enforced only when billing is ON and the user is not Pro.
     const n = (S.products || []).length;
-    $('#product-limit').textContent =
-      n + (n === 1 ? ' product tracked' : ' products tracked') + ' · unlimited in v' + NS.VERSION;
+    const gate = await NS.License.canAddProduct(n);
+    $('#add-product').disabled = !gate.allowed;
+    const note = $('#product-limit');
+    if (!gate.billing) {
+      note.textContent = n + (n === 1 ? ' product tracked' : ' products tracked') + ' · unlimited in v' + NS.VERSION;
+    } else if (!Number.isFinite(gate.limit)) {
+      note.textContent = n + (n === 1 ? ' product tracked' : ' products tracked') + ' · Pro: unlimited';
+    } else {
+      note.innerHTML = n + ' of ' + gate.limit + ' on the Free plan · ' +
+        '<a href="#" id="pl-upgrade">Upgrade to Pro for unlimited →</a>';
+      const up = $('#pl-upgrade');
+      if (up) up.addEventListener('click', (e) => { e.preventDefault(); NS.License.startCheckout(); });
+    }
   }
 
   function productCard(p, i) {
@@ -113,6 +123,8 @@
 
   $('#add-product').addEventListener('click', async () => {
     S.products = S.products || [];
+    const gate = await NS.License.canAddProduct(S.products.length);
+    if (!gate.allowed) { NS.License.startCheckout(); return; }
     S.products.push({ id: NS.uid('prod'), name: '', keywords: [], synonyms: [], pitch: '', url: '' });
     renderProducts(); scheduleSave();
   });
@@ -167,6 +179,10 @@
     // The key is NOT part of settings — it lives alone in chrome.storage.local
     // so it is never synced to Google's servers and never reaches a content
     // script. We show a masked placeholder rather than the value itself.
+    const ai = await NS.License.canUseAi();
+    const badge = $('#ai-badge');
+    badge.textContent = (ai.billing && !ai.allowed) ? 'Pro' : 'Optional';
+    badge.classList.toggle('is-pro', ai.billing && !ai.allowed);
     const hasKey = await NS.Storage.hasApiKey();
     const keyEl = $('#ai-key');
     keyEl.value = '';
@@ -205,6 +221,14 @@
   }
   async function refreshPermNote() {
     const note = $('#ai-perm-note');
+    const ai = await NS.License.canUseAi();
+    if (ai.billing && !ai.allowed) {
+      note.innerHTML = 'AI drafts are part of <b>Pro</b>. <a href="#" id="ai-upgrade">Upgrade to unlock →</a> ' +
+        '(you can still save a key now; it is used once Pro is active).';
+      const u = $('#ai-upgrade');
+      if (u) u.addEventListener('click', (e) => { e.preventDefault(); NS.License.startCheckout(); });
+      return;
+    }
     const hasKey = await NS.Storage.hasApiKey();
     if (!hasKey) {
       note.textContent = 'No key set → drafts use built-in local templates (fully offline).';
@@ -223,28 +247,147 @@
     } catch (_e) { /* ignore */ }
   }
 
-  // ── Plan ───────────────────────────────────────────────────────────────────
+  // ── Plan & license ─────────────────────────────────────────────────────────
   /**
-   * v0.1.0 ships free-only. There is no key to enter and nothing to buy, so
-   * this section states that plainly instead of showing a paywall that could
-   * be bypassed by reading the bundle.
+   * When billing is OFF (billing-config.js empty) this states plainly that
+   * everything is free — no paywall, nothing to enter.
+   * When billing is ON, Pro is granted ONLY from a Lemon Squeezy server
+   * verification performed by the background worker (see license.js).
    */
+  function ensureLemonPermission() {
+    return new Promise((resolve) => {
+      try {
+        chrome.permissions.contains({ origins: ['https://api.lemonsqueezy.com/*'] }, (has) => {
+          if (has) return resolve(true);
+          chrome.permissions.request({ origins: ['https://api.lemonsqueezy.com/*'] }, (granted) => {
+            void chrome.runtime.lastError;
+            resolve(!!granted);
+          });
+        });
+      } catch (_e) { resolve(false); }
+    });
+  }
+
   async function renderLicense() {
     const box = $('#license-box');
     box.innerHTML = '';
-
-    const note = document.createElement('p');
-    note.className = 'plan-note';
-    note.innerHTML =
-      '<b>Free — all features unlocked.</b><br>' +
-      'v' + NS.VERSION + ' is an early-access build: unlimited products, ' +
-      'unlimited saved leads, template drafts, and optional AI drafts with ' +
-      'your own Anthropic key. There is no paid tier and nothing to activate.';
-    box.appendChild(note);
-
+    const st = await NS.License.getStatus();
     const pill = $('#plan-pill');
-    pill.textContent = 'Free';
-    pill.classList.remove('is-pro');
+
+    if (!st.billing) {
+      const note = document.createElement('p');
+      note.className = 'plan-note';
+      note.innerHTML =
+        '<b>Free — all features unlocked.</b><br>' +
+        'v' + NS.VERSION + ' is an early-access build: unlimited products, ' +
+        'unlimited saved leads, template drafts, and optional AI drafts with ' +
+        'your own Anthropic key. There is no paid tier and nothing to activate.';
+      box.appendChild(note);
+      $('#plan-blurb').textContent = 'Where SubSniper stands today.';
+      pill.textContent = 'Free';
+      pill.classList.remove('is-pro');
+      return;
+    }
+
+    $('#plan-blurb').textContent =
+      'Free: ' + NS.LIMITS.FREE_PRODUCTS + ' tracked product + template drafts. ' +
+      'Pro: unlimited products + AI drafts. Verified with Lemon Squeezy.';
+    pill.textContent = st.pro ? 'Pro' : 'Free';
+    pill.classList.toggle('is-pro', st.pro);
+
+    const cache = await NS.Storage.getLicenseCache();
+    const statusRow = document.createElement('div');
+    statusRow.className = 'license-status';
+    const reasonText = {
+      'active': 'Pro is active',
+      'no-license': 'Free plan',
+      'expired': 'Subscription expired — Free plan',
+      'disabled': 'License disabled — Free plan',
+      'inactive': 'License not activated — Free plan',
+      'grace-expired': 'Could not re-verify for 3 days — Free plan until verified',
+      'wrong-product': 'That key is for a different product',
+      'wrong-store': 'That key is for a different store'
+    }[st.reason] || ('Free plan (' + st.reason + ')');
+    statusRow.innerHTML =
+      '<span class="license-dot ' + (st.pro ? 'on' : '') + '"></span>' +
+      '<span class="license-text">' + reasonText + '</span>';
+    box.appendChild(statusRow);
+
+    if (cache && cache.validatedAt) {
+      const meta = document.createElement('p');
+      meta.className = 'license-meta';
+      meta.textContent = 'Last verified with Lemon Squeezy: ' + new Date(cache.validatedAt).toLocaleString() +
+        (st.stale ? ' · re-checking' : '');
+      box.appendChild(meta);
+    }
+
+    const msg = document.createElement('p');
+    msg.className = 'license-msg';
+
+    if (st.pro || (cache && cache.key)) {
+      // Has a key on file: offer re-check + deactivate; if not Pro, also allow re-entry.
+      const actions = document.createElement('div');
+      actions.className = 'license-actions';
+      const recheck = document.createElement('button');
+      recheck.className = 'btn'; recheck.textContent = 'Re-check now';
+      recheck.addEventListener('click', async () => {
+        msg.textContent = 'Checking…'; msg.className = 'license-msg';
+        const ok = await ensureLemonPermission();
+        if (!ok) { msg.textContent = 'Permission for api.lemonsqueezy.com is required to verify.'; msg.className = 'license-msg err'; return; }
+        const r = await NS.License.revalidate();
+        msg.textContent = r.ok ? (r.pro ? 'Verified — Pro is active.' : 'Verified — not active: ' + (r.status || r.error || 'unknown'))
+                               : ('Could not verify: ' + (r.error || 'unknown'));
+        msg.className = 'license-msg ' + (r.ok && r.pro ? 'ok' : 'err');
+        await renderLicense(); await renderProducts(); await renderAi();
+      });
+      const deact = document.createElement('button');
+      deact.className = 'btn btn-ghost'; deact.textContent = 'Deactivate on this device';
+      deact.addEventListener('click', async () => {
+        await NS.License.deactivate();
+        await renderLicense(); await renderProducts(); await renderAi();
+      });
+      actions.appendChild(recheck); actions.appendChild(deact);
+      box.appendChild(actions);
+    }
+
+    if (!st.pro) {
+      const row = document.createElement('div');
+      row.className = 'license-row';
+      const keyInput = document.createElement('input');
+      keyInput.type = 'text'; keyInput.placeholder = 'Paste your Lemon Squeezy license key';
+      keyInput.autocomplete = 'off'; keyInput.spellcheck = false;
+      const activate = document.createElement('button');
+      activate.className = 'btn btn-primary'; activate.textContent = 'Activate';
+      const buy = document.createElement('button');
+      buy.className = 'btn btn-upgrade'; buy.textContent = '✦ Get Pro';
+      row.appendChild(keyInput); row.appendChild(activate); row.appendChild(buy);
+      box.appendChild(row);
+
+      activate.addEventListener('click', async () => {
+        const key = keyInput.value.trim();
+        if (!key) { msg.textContent = 'Paste the license key from your Lemon Squeezy receipt.'; msg.className = 'license-msg err'; return; }
+        activate.disabled = true; msg.textContent = 'Verifying with Lemon Squeezy…'; msg.className = 'license-msg';
+        // Optional host permission — requested here, on a user gesture.
+        const ok = await ensureLemonPermission();
+        if (!ok) {
+          activate.disabled = false;
+          msg.textContent = 'SubSniper needs permission to contact api.lemonsqueezy.com to verify your key.';
+          msg.className = 'license-msg err';
+          return;
+        }
+        const res = await NS.License.activate(key);
+        activate.disabled = false;
+        if (res.ok && res.pro) {
+          msg.textContent = 'Pro activated. Thank you!'; msg.className = 'license-msg ok';
+        } else {
+          msg.textContent = res.error || ('Not activated: ' + (res.status || 'unknown')); msg.className = 'license-msg err';
+        }
+        await renderLicense(); await renderProducts(); await renderAi();
+      });
+      buy.addEventListener('click', () => NS.License.startCheckout());
+    }
+
+    box.appendChild(msg);
   }
 
   // ── Display ────────────────────────────────────────────────────────────────

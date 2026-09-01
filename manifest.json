@@ -3,9 +3,16 @@
   "name": "SubSniper — Reddit Lead Sniper",
   "version": "0.1.0",
   "description": "Score buying-intent on the Reddit threads you're already reading, save the hot leads, and draft a reply you copy & paste yourself. Runs locally by default — optional AI drafts use your own Anthropic key. Never posts for you.",
-  "permissions": ["storage"],
-  "host_permissions": ["https://*.reddit.com/*"],
-  "optional_host_permissions": ["https://api.anthropic.com/*"],
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.reddit.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://api.anthropic.com/*",
+    "https://api.lemonsqueezy.com/*"
+  ],
   "background": {
     "service_worker": "src/background/service-worker.js"
   },
@@ -26,7 +33,9 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*.reddit.com/*"],
+      "matches": [
+        "https://*.reddit.com/*"
+      ],
       "run_at": "document_idle",
       "js": [
         "src/common/constants.js",
@@ -34,6 +43,7 @@
         "src/common/intent-engine.js",
         "src/common/dom-reddit.js",
         "src/common/draft.js",
+        "src/common/billing-config.js",
         "src/common/license.js",
         "src/content/sidebar.js",
         "src/content/content.js"

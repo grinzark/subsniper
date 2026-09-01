@@ -311,12 +311,26 @@ globalThis.SubSniper = globalThis.SubSniper || {};
      * learns whether one EXISTS (a boolean from storage.local); the key is
      * read by the background worker at send time.
      */
+    /**
+     * AI draft row. Gated by NS.License.canUseAi() — which is only restrictive
+     * when billing is ON (billing-config.js) and the user is not Pro.
+     *
+     * SECURITY: this content script never sees the Anthropic key. It only
+     * learns whether one EXISTS (a boolean from storage.local); the key is
+     * read by the background worker at send time, which also re-checks the
+     * Pro gate itself.
+     */
     _aiRow(lead, product, settings) {
       const btn = h('button', {
         class: 'ss-btn ss-btn-ai',
         text: '✨ Generate with AI',
         onClick: async (e) => {
           const b = e.currentTarget;
+          const gate = await NS.License.canUseAi();
+          if (!gate.allowed) {
+            this._toast('AI drafts are part of Pro.', 'upgrade');
+            return;
+          }
           const hasKey = await NS.Storage.hasApiKey();
           if (!hasKey) {
             this._toast('Add your Anthropic API key in Options to use AI drafts.', 'info');
@@ -332,9 +346,10 @@ globalThis.SubSniper = globalThis.SubSniper || {};
       });
       const note = h('span', { class: 'ss-ai-note', text: 'Optional · sends this post to Anthropic with your own key' });
       const row = h('div', { class: 'ss-ai-row' }, [btn, note]);
-      // Reflect key presence once resolved, without ever holding the key.
-      NS.Storage.hasApiKey().then((hasKey) => {
-        if (!hasKey) note.textContent = 'Optional · add your Anthropic key in Options to enable';
+      // Reflect gate + key presence once resolved, without ever holding the key.
+      Promise.all([NS.License.canUseAi(), NS.Storage.hasApiKey()]).then(([gate, hasKey]) => {
+        if (!gate.allowed) note.textContent = 'Pro feature · upgrade to unlock AI drafts';
+        else if (!hasKey) note.textContent = 'Optional · add your Anthropic key in Options to enable';
       });
       return row;
     },
@@ -410,12 +425,18 @@ globalThis.SubSniper = globalThis.SubSniper || {};
     },
 
     _toast(msg, kind) {
-      const t = h('div', { class: 'ss-toast ss-toast-' + (kind || 'ok') }, [
-        h('span', { text: msg })
+      // The Upgrade CTA exists ONLY when billing is switched on (billing-config.js).
+      const showUpgrade = kind === 'upgrade' && NS.License.isBillingEnabled();
+      const t = h('div', { class: 'ss-toast ss-toast-' + (showUpgrade ? 'upgrade' : (kind === 'upgrade' ? 'info' : (kind || 'ok'))) }, [
+        h('span', { text: msg }),
+        showUpgrade ? h('button', {
+          class: 'ss-toast-cta', text: 'Upgrade',
+          onClick: () => NS.License.startCheckout()
+        }) : null
       ]);
       this._root.appendChild(t);
       requestAnimationFrame(() => t.classList.add('is-in'));
-      setTimeout(() => { t.classList.remove('is-in'); setTimeout(() => t.remove(), 300); }, 3200);
+      setTimeout(() => { t.classList.remove('is-in'); setTimeout(() => t.remove(), 300); }, showUpgrade ? 5000 : 3200);
     }
   };
 

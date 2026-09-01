@@ -45,21 +45,29 @@ globalThis.SubSniper = globalThis.SubSniper || {};
   });
 
   /**
-   * v0.1.0 SHIPS FREE-ONLY — every feature is unlocked and there is no
-   * paywall, because no billing product exists yet. Shipping an "Upgrade"
-   * CTA that 404s (or a paywall bypassable by reading the bundle) would be
-   * dishonest, so the gate is simply off. See license.js for the sketch of
-   * how to re-introduce real, server-verified gating once billing exists.
-   */
-  NS.UNLOCKED = true;
-
-  /**
-   * Retained for when billing returns. NOT enforced in v0.1.0.
-   * @type {Readonly<{FREE_PRODUCTS:number, FREE_LEADS:number}>}
+   * Free-tier limits — ENFORCED ONLY WHEN BILLING IS ON.
+   * Billing is on iff every field in billing-config.js is filled in (see
+   * NS.BillingConfig.isBillingEnabled). When it is off, every feature is
+   * unlocked and nothing here applies.
+   *   Free = FREE_PRODUCTS tracked product(s) + template drafts.
+   *   Pro  = unlimited products + AI drafts.
    */
   NS.LIMITS = Object.freeze({
-    FREE_PRODUCTS: 1,
-    FREE_LEADS: 15
+    FREE_PRODUCTS: 1
+  });
+
+  /**
+   * License verification cadence (Lemon Squeezy, server-verified).
+   *   REVALIDATE_MS — re-check with the server once the cached result is
+   *                   older than this (24h).
+   *   GRACE_MS      — if the server can't be reached, keep Pro for up to this
+   *                   long past the last SUCCESSFUL validation (3 days), then
+   *                   fall back to Free until a validation succeeds.
+   */
+  NS.LICENSE = Object.freeze({
+    REVALIDATE_MS: 24 * 60 * 60 * 1000,
+    GRACE_MS: 3 * 24 * 60 * 60 * 1000,
+    INSTANCE_NAME: 'SubSniper (Chrome)'
   });
 
   /** Draft tone presets exposed in the composer. */
@@ -80,9 +88,13 @@ globalThis.SubSniper = globalThis.SubSniper || {};
 
   /** Message types passed between content ⇄ background ⇄ popup/options. */
   NS.MSG = Object.freeze({
-    // v0.1.0 ships free-only — no checkout message (see license.js).
     AI_DRAFT: 'subsniper:ai-draft',
-    PING: 'subsniper:ping'
+    PING: 'subsniper:ping',
+    // Billing (all handled by the background worker; see service-worker.js)
+    OPEN_CHECKOUT: 'subsniper:open-checkout',
+    LICENSE_ACTIVATE: 'subsniper:license-activate',
+    LICENSE_VALIDATE: 'subsniper:license-validate',
+    LICENSE_DEACTIVATE: 'subsniper:license-deactivate'
   });
 
   /**
@@ -97,6 +109,7 @@ globalThis.SubSniper = globalThis.SubSniper || {};
     SETTINGS: 'subsniper_settings',
     SETTINGS_LOCAL: 'subsniper_settings_local',
     API_KEY: 'subsniper_api_key',
+    LICENSE: 'subsniper_license',   // local: verified Lemon Squeezy state
     LEADS: 'subsniper_leads',
     STATS: 'subsniper_stats'
   });

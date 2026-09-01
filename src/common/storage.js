@@ -159,6 +159,30 @@ globalThis.SubSniper = globalThis.SubSniper || {};
       return !!(k && String(k).trim());
     },
 
+    // ── License cache: the last SERVER-VERIFIED Lemon Squeezy result ──────────
+    // Written only by the background worker. Local only, never synced.
+    // Shape: { key, instanceId, status, valid, validatedAt, productId,
+    //          storeId, variantId }  — deliberately NO customer name/email.
+    async getLicenseCache() {
+      const c = await areaGet('local', KEYS.LICENSE);
+      return c && typeof c === 'object' ? c : null;
+    },
+    async setLicenseCache(cache) {
+      return areaSet('local', KEYS.LICENSE, cache);
+    },
+    async clearLicenseCache() {
+      return areaRemove('local', KEYS.LICENSE);
+    },
+    /** Subscribe to license-cache changes. cb(newCacheOrNull). */
+    onLicenseChanged(cb) {
+      if (!hasChrome() || !chrome.storage.onChanged) return () => {};
+      const handler = (changes, area) => {
+        if (area === 'local' && changes[KEYS.LICENSE]) cb(changes[KEYS.LICENSE].newValue || null);
+      };
+      chrome.storage.onChanged.addListener(handler);
+      return () => chrome.storage.onChanged.removeListener(handler);
+    },
+
     /** @returns {Promise<Array>} saved leads (never null). */
     async getLeads() {
       const raw = await areaGet('local', KEYS.LEADS);
@@ -170,8 +194,7 @@ globalThis.SubSniper = globalThis.SubSniper || {};
     },
 
     /**
-     * Save (upsert) a lead by id.
-     * v0.1.0 ships free-only with no cap (NS.UNLOCKED) — see constants.js.
+     * Save (upsert) a lead by id. Saved leads are never capped.
      * @returns {Promise<{ok:boolean, error?:string, leads:Array}>}
      */
     async saveLead(lead) {

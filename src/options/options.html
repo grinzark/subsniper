@@ -66,7 +66,7 @@
     <!-- AI DRAFTS -->
     <section class="card">
       <div class="card-head">
-        <h2>AI drafts <span class="opt-badge">Optional</span></h2>
+        <h2>AI drafts <span class="opt-badge" id="ai-badge">Optional</span></h2>
         <p>Optional. Bring your own Anthropic API key. When you click "Generate with
           AI", that post's text and your product details are sent directly from your
           browser to Anthropic — nowhere else. Leave blank to use the built-in local
@@ -98,8 +98,8 @@
     <!-- PLAN -->
     <section class="card">
       <div class="card-head">
-        <h2>Plan</h2>
-        <p>Where SubSniper stands today.</p>
+        <h2>Plan &amp; license</h2>
+        <p id="plan-blurb">Where SubSniper stands today.</p>
       </div>
       <div id="license-box"></div>
     </section>
@@ -123,6 +123,7 @@
   <script src="../common/constants.js"></script>
   <script src="../common/storage.js"></script>
   <script src="../common/intent-engine.js"></script>
+  <script src="../common/billing-config.js"></script>
   <script src="../common/license.js"></script>
   <script src="options.js"></script>
 </body>

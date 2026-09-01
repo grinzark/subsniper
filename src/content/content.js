@@ -23,13 +23,17 @@
     scanScheduled: false,
     observer: null,
     booted: false,
+    license: null,   // NS.License.getStatus() result (server-verified cache)
     lastHref: (typeof location !== 'undefined' ? location.href : '')
   };
 
   function activeProducts() {
-    return (state.settings.products || []).filter(
+    const all = (state.settings.products || []).filter(
       (p) => p && p.name && ((p.keywords || []).length || (p.synonyms || []).length)
     );
+    // Free tier (billing ON, not Pro) tracks a limited number of products.
+    const limit = state.license && state.license.limits ? state.license.limits.products : Infinity;
+    return Number.isFinite(limit) ? all.slice(0, limit) : all;
   }
 
   function currentLexicon() {
@@ -210,6 +214,7 @@
     if (state.booted) return;
     state.booted = true;
     state.settings = await NS.Storage.getSettings();
+    state.license = await NS.License.getStatus();
 
     NS.Sidebar.init({
       onChange: () => { scheduleScan(); }
@@ -223,6 +228,12 @@
       state.settings = next;
       if (wasEnabled !== next.enabled) applyEnabled();
       else scheduleScan();
+    });
+
+    // Re-gate live when the license cache changes (activation in Options).
+    NS.Storage.onLicenseChanged(async () => {
+      state.license = await NS.License.getStatus();
+      scheduleScan();
     });
 
     // Reddit is an SPA. popstate covers back/forward; forward navigation is

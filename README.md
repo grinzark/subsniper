@@ -1,5 +1,8 @@
 # SubSniper — Reddit Lead Sniper
 
+_Publisher: **zarkside** · Legal data controller: **Mohamed Y. (trading as zarkside)**, UK
+sole trader. Launch steps live in [LAUNCH.md](./LAUNCH.md)._
+
 Score buying-intent on the Reddit threads you're **already reading**, save the hot
 leads, and draft a reply you **copy and paste yourself**. SubSniper is an
 in-thread lead-generation tool for founders and marketers. Scoring runs
@@ -46,19 +49,22 @@ blank and SubSniper is fully offline. Your key is stored only on your device
   concise / founder-to-founder) that mirror the person's pain, give one helpful
   line, and end with a soft, honest mention. Optional AI drafts with your key.
 
-## Pricing — v0.1.0 is free, everything unlocked
+## Pricing — a config-driven Pro gate (OFF in v0.1.0)
 
-There is **no paid tier and no paywall** in this build: unlimited products,
-unlimited saved leads, template drafts, and optional AI drafts (with your own
-key) are all available.
+Billing is a **switch** in `src/common/billing-config.js`:
 
-This is deliberate. An earlier draft gated "Pro" behind a check that ran
-entirely in the browser — and shipped the key generator inside the bundle — so
-anyone reading the source could unlock it in seconds, while every "Upgrade"
-button pointed at a product that didn't exist yet. Rather than ship a paywall
-that is both bypassable and unbuyable, the gate is simply off. See
-`src/common/license.js` for how to re-introduce real, **server-verified**
-gating once billing exists.
+| `LEMON_SQUEEZY` fields | Behaviour |
+|---|---|
+| any empty (**as shipped**) | Free-only. Everything unlocked, no upgrade buttons, no license UI. |
+| all four set | Pro gate ON. **Free** = 1 tracked product + template drafts. **Pro** = unlimited products + AI drafts. "Upgrade" opens the Lemon Squeezy checkout. |
+
+When the gate is on, Pro is granted **only** from a Lemon Squeezy server
+verification performed by the background worker (`/v1/licenses/activate`, then
+`/v1/licenses/validate` every ~24h) and only while the license status is
+`active`. The verified result is cached locally with a 3-day offline grace.
+There is no client-side check to bypass — the gate logic is a pure function
+covered by `src/common/license.test.mjs`. How to fill in the four values:
+[LAUNCH.md → section 6](./LAUNCH.md#6-switch-on-pro-billing-lemon-squeezy--when-youre-ready-to-charge).
 
 ---|---|---|
 | Tracked products | 1 | Unlimited |
@@ -86,15 +92,19 @@ To regenerate the icons after editing the design:
 python3 assets/generate-icon.py     # needs Pillow
 ```
 
-To run the intent-engine unit tests:
+To run the unit tests (intent engine + the Pro gate):
 
 ```bash
-node --test src/common/intent-engine.test.mjs
+node --test src/common/*.test.mjs
 ```
 
 ---
 
 ## Publish it to the Chrome Web Store
+
+> **The authoritative, click-by-click version of this — with the final listing
+> copy, the exact Privacy-practices answers, and the screenshot plan — is
+> [LAUNCH.md](./LAUNCH.md).** The summary below is kept for orientation.
 
 1. **Register** a Chrome Web Store developer account at
    <https://chrome.google.com/webstore/devconsole> — this is a **one-time $5
@@ -104,10 +114,11 @@ node --test src/common/intent-engine.test.mjs
    working privacy-policy URL, so the submission is blocked until this exists.**
    A file sitting in this repo is *not* enough — it needs to be a real, publicly
    reachable web page. Free options, pick one:
-   - **GitHub Pages** (easiest): push this repo to GitHub → **Settings → Pages**
-     → Source: `main`, folder `/ (root)` → Save. After ~1 minute your policy is
-     live at `https://<your-username>.github.io/<repo>/PRIVACY` (GitHub renders
-     `PRIVACY.md` automatically).
+   - **GitHub Pages** (easiest): a ready-made page is in `docs/index.html`.
+     Push this repo to GitHub (account `grinzark`) → **Settings → Pages** →
+     Source: *Deploy from a branch*, branch `main`, folder **`/docs`** → Save.
+     After ~1 minute your policy is live at
+     `https://grinzark.github.io/<repo>/` (exact commands in LAUNCH.md §1).
    - Or paste the contents into a GitHub **Gist**, Notion public page, or any
      page on your own domain.
 
@@ -117,7 +128,7 @@ node --test src/common/intent-engine.test.mjs
    (`SubSniper-v0.1.0.zip`), or rebuild the minimal runtime set:
    ```bash
    zip -r SubSniper-v0.1.0.zip manifest.json src assets \
-     -x "src/common/intent-engine.test.mjs" "assets/generate-icon.py" \
+     -x "src/common/*.test.mjs" "assets/generate-icon.py" \
         "assets/icon.png" "assets/icon1024.png" "*.DS_Store"
    ```
    (Ship only `manifest.json`, `src/`, and `assets/` icons — not the tests,
@@ -136,9 +147,11 @@ node --test src/common/intent-engine.test.mjs
      selected Reddit post is sent to `api.anthropic.com`. Disclose that host as
      *optional, user-initiated, authenticated with the user's own API key*, and
      tick the corresponding data-use boxes honestly.
-   - Justify the **`storage`** permission (saving settings and leads locally)
-     and the **`*.reddit.com`** host permission (reads page content to score
-     leads; read-only, never writes).
+   - Justify the **`storage`** permission (saving settings and leads locally),
+     the **`*.reddit.com`** host permission (reads page content to score leads;
+     read-only, never writes), and the two **optional** hosts
+     (`api.anthropic.com` for user-keyed AI drafts, `api.lemonsqueezy.com` for
+     license verification). Exact wording in LAUNCH.md §4.
    - The extension does **not** post, comment, or vote on the user's behalf —
      that claim is true and worth stating.
 7. Submit for review. Approval typically takes a few days.
@@ -151,29 +164,23 @@ node --test src/common/intent-engine.test.mjs
 
 ---
 
-## Adding a paid tier later (not in v0.1.0)
+## Turning on Pro billing
 
-`src/common/license.js` documents both routes and the one rule that matters:
-**a license check is only meaningful if it is verified server-side.** Never ship
-a check the client can satisfy on its own — that is exactly what was removed.
-
-- **ExtensionPay** (<https://extensionpay.com>) — handles Stripe, trials, and
-  the paywall UI. Register the extension id, call `extpay.startBackground()` in
-  the service worker, and gate on the server-provided `user.paid`.
-- **Gumroad license keys** (<https://gumroad.com>) — verify from the background
-  worker via `POST https://api.gumroad.com/v2/licenses/verify`, granting access
-  only when `success && !purchase.refunded && !purchase.subscription_ended_at`.
-  Requires adding `https://api.gumroad.com/*` to host permissions.
-
-Whichever you choose, re-introduce the UI (upgrade CTAs, plan pill) at the same
-time — not before, so users never see a button that leads nowhere.
+Fill the four values in `src/common/billing-config.js` (store id, product id,
+variant id, checkout URL — all from your Lemon Squeezy dashboard), bump the
+manifest version, rebuild the zip, re-upload. Full walkthrough, including how to
+test the money path in Lemon Squeezy's test mode, is in
+[LAUNCH.md → section 6](./LAUNCH.md#6-switch-on-pro-billing-lemon-squeezy--when-youre-ready-to-charge).
 
 ## Project layout
 
 ```
 SubSniper/
 ├── manifest.json                 MV3 manifest (zero-build)
-├── README.md · PRIVACY.md · BUILD_REPORT.md
+├── README.md · PRIVACY.md · LAUNCH.md · BUILD_REPORT.md
+├── docs/
+│   ├── index.html                Hosted privacy page (GitHub Pages, /docs)
+│   └── .nojekyll
 ├── assets/
 │   ├── generate-icon.py          Pillow icon generator
 │   └── icon16/48/128.png         Generated icons (+ 1024 master)
@@ -185,13 +192,15 @@ SubSniper/
     │   ├── intent-engine.test.mjs  node --test unit tests
     │   ├── dom-reddit.js         New + old Reddit DOM adapters
     │   ├── draft.js              Template + AI-request composer (never posts)
-    │   └── license.js            Plan state (v0.1.0 = all unlocked) + gating notes
+    │   ├── billing-config.js     THE BILLING SWITCH (Lemon Squeezy ids; empty = free-only)
+    │   ├── license.js            Pro gate: pure computeStatus() + worker messaging
+    │   └── license.test.mjs      node --test for the gate
     ├── content/
     │   ├── content.js            Orchestrator (scan → score → badge → sidebar)
     │   ├── sidebar.js            Panel + lead cards + composer modal
     │   ├── sidebar.css · badges.css
     ├── background/
-    │   └── service-worker.js     Optional Anthropic fetch (holds the API key)
+    │   └── service-worker.js     The ONLY network code: Anthropic + Lemon Squeezy, allow-listed
     ├── popup/                    Stats + master on/off toggle
     └── options/                  Products, lexicon tuner, AI key, license
 ```

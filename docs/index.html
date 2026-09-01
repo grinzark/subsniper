@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SubSniper — Privacy Policy</title>
+<meta name="description" content="Privacy policy for the SubSniper Chrome extension. Lead scoring runs on your device; no SubSniper server; optional AI drafts and Pro license verification are user-initiated.">
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--fg:#14161a;--fg2:#4d5563;--muted:#7a8291;--border:#e2e5ea;--accent:#ff5414}
+  @media (prefers-color-scheme:dark){:root{--bg:#101216;--card:#16181d;--fg:#f2f4f7;--fg2:#b7bdc9;--muted:#838a97;--border:#2c313a}}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--fg);line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px}
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .mark{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#ff5414,#ff7a00);display:flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto}
+  h1{font-size:26px;margin:0;letter-spacing:-.02em}
+  .meta{color:var(--muted);font-size:13px;margin:0 0 22px}
+  h2{font-size:18px;margin:30px 0 8px;letter-spacing:-.01em}
+  p,li{color:var(--fg2);font-size:15px}
+  strong{color:var(--fg)}
+  code{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:13px}
+  ul,ol{padding-left:22px}
+  a{color:var(--accent)}
+  .callout{background:rgba(255,84,20,.07);border:1px solid rgba(255,84,20,.25);border-radius:10px;padding:12px 16px}
+  .limited{background:var(--bg);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 10px 10px 0}
+  footer{color:var(--muted);font-size:12.5px;margin-top:26px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+
+<div class="brand">
+  <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></svg></span>
+  <h1>SubSniper — Privacy Policy</h1>
+</div>
+<p class="meta">Last updated: 1 September 2026 &nbsp;·&nbsp; Data controller: <strong>Mohamed Y. (trading as zarkside)</strong>, sole trader, United Kingdom &nbsp;·&nbsp; Publisher: <strong>zarkside</strong></p>
+
+<p class="callout">SubSniper is built privacy-first. The short version: <strong>lead scoring happens on your device, and SubSniper runs no server of its own.</strong> There are no analytics, no tracking, and no account. The only things that can ever leave your browser are (1) an AI draft you explicitly request, sent with your own Anthropic key, and (2) a Pro license key you choose to activate, sent to Lemon Squeezy for verification. Both are described below.</p>
+
+<h2>What SubSniper does with data</h2>
+<p>SubSniper reads the content of <strong>reddit.com pages you are already viewing</strong> in your own logged-in browser session, in order to score posts and comments for buying-intent against the products and keywords <strong>you</strong> configure. This processing happens <strong>entirely locally, in your browser</strong>. Page content is never uploaded anywhere by default.</p>
+
+<h2>What SubSniper stores (and where)</h2>
+<p>All storage is Chrome's own extension storage on your device:</p>
+<ul>
+  <li><strong>Roaming preferences</strong> (the on/off toggle, your chosen model, draft tone, and badge threshold) are stored in <code>chrome.storage.sync</code>. If you're signed into Chrome, Chrome may sync these across your own devices; they are not sent to us or to any third party.</li>
+  <li><strong>Your products and tuned intent weights</strong> (product names, keywords, synonyms, pitch, URL, and signal weights) are stored in <code>chrome.storage.local</code> — on this machine only, never synced.</li>
+  <li><strong>Your Anthropic API key</strong>, if you choose to enter one, is stored in <code>chrome.storage.local</code> <strong>only</strong>. It is deliberately kept out of Chrome sync, so it is never replicated to Google's servers. It is also never loaded into the script that runs on reddit.com — only the extension's background worker reads it, and only to authenticate the AI-draft request you explicitly trigger.</li>
+  <li><strong>Your Pro license state</strong>, if you activate Pro, is stored in <code>chrome.storage.local</code> only: the license key, the activation instance id, the key's status, and the time it was last verified. We deliberately do <strong>not</strong> store your name or email even though Lemon Squeezy's response includes them.</li>
+  <li><strong>Saved leads</strong> (the score, matched reasons, snippet, author, subreddit, and permalink of leads you explicitly save) and <strong>daily counters</strong> are stored in <code>chrome.storage.local</code> on this machine only.</li>
+</ul>
+<p>You can delete all of it at any time by removing the extension, or by clearing saved leads in the panel.</p>
+
+<h2>What SubSniper sends over the network</h2>
+<p>By default: <strong>nothing.</strong> SubSniper makes <strong>no</strong> network requests. It does not call the Reddit API, does not contact any SubSniper server (there is none), and does not use analytics.</p>
+<p>There are exactly two optional, user-initiated exceptions. The extension's background worker refuses to contact any other host.</p>
+
+<p><strong>1. AI drafts — <code>api.anthropic.com</code>.</strong> If, and only if, you:</p>
+<ol>
+  <li>enter <strong>your own</strong> Anthropic API key in Options,</li>
+  <li>grant the optional permission for <code>api.anthropic.com</code>, and</li>
+  <li>click <strong>“Generate with AI”</strong> on a specific draft,</li>
+</ol>
+<p>then SubSniper sends that one lead's text and your product details <strong>directly from your browser to Anthropic</strong>, authenticated with your own key, to generate reply text. This request goes to Anthropic and nowhere else. Anthropic's handling of that request is governed by <a href="https://www.anthropic.com/legal/privacy" rel="noopener">Anthropic's privacy policy</a>. If you never enter a key, this never happens.</p>
+
+<p><strong>2. Pro license verification — <code>api.lemonsqueezy.com</code>.</strong> SubSniper Pro is sold through Lemon Squeezy, our Merchant of Record. If you buy Pro and activate your license key in Options (after granting the optional permission for <code>api.lemonsqueezy.com</code>), SubSniper sends <strong>only your license key and an activation instance id</strong> (plus a fixed label, “SubSniper (Chrome)”, on first activation) to Lemon Squeezy to confirm the subscription is active. It re-checks about once a day. No page content, products, saved leads, or Anthropic key are ever included. Your purchase itself — payment details, receipts, name and email — is handled by Lemon Squeezy under <a href="https://www.lemonsqueezy.com/privacy" rel="noopener">Lemon Squeezy's privacy policy</a>; SubSniper never sees your payment details. If you never activate a key, this never happens.</p>
+
+<h2>What SubSniper never does</h2>
+<ul>
+  <li>It never posts, comments, upvotes, messages, or takes <strong>any</strong> action on Reddit on your behalf. Drafts are copy-and-paste only; you post manually.</li>
+  <li>It never sells, shares, or transmits your data to us or to advertisers.</li>
+  <li>It never tracks your browsing outside of scoring the reddit.com page in front of you.</li>
+  <li>It has no third-party analytics, ad, or tracking SDKs.</li>
+</ul>
+
+<h2>Permissions and why they're needed</h2>
+<ul>
+  <li><strong><code>storage</code></strong> — to save your settings, leads, and license state locally (as above).</li>
+  <li><strong>Host access to <code>*.reddit.com</code></strong> — so the content script can read the page content it scores. Read-only; no writes.</li>
+  <li><strong>Optional host access to <code>api.anthropic.com</code></strong> — requested only if you enable AI drafts, used only for the request described above.</li>
+  <li><strong>Optional host access to <code>api.lemonsqueezy.com</code></strong> — requested only if you activate a Pro license, used only for the verification described above.</li>
+</ul>
+
+<h2>Chrome Web Store Limited Use disclosure</h2>
+<p class="limited"><strong>SubSniper's use and transfer of information received from Chrome APIs adheres to the Chrome Web Store User Data Policy, including the Limited Use requirements.</strong></p>
+<p>Concretely, that means: the information SubSniper reads is used only to provide the user-facing lead-scoring and drafting features described above; it is not sold, not transferred to third parties (except the optional, user-initiated AI draft sent to Anthropic with the user's own key, and the license key sent to Lemon Squeezy for verification), not used for advertising or creditworthiness, and not read by any human.</p>
+
+<h2>Your rights (UK GDPR)</h2>
+<p>Because SubSniper stores your data on your own device and operates no server, we hold no personal data about you to access, correct, or erase — removing the extension removes everything SubSniper stored. For purchase records held by Lemon Squeezy, contact Lemon Squeezy or use the contact below.</p>
+
+<h2>Contact</h2>
+<p>zarkside — via the Chrome Web Store listing's support contact.</p>
+
+<footer>SubSniper · Local by default · never posts for you</footer>
+</div></div>
+</body>
+</html>
